@@ -6847,24 +6847,6 @@ namespace OpenTween
                         //フォーカスPostBrowserもしくは関係なし
                         switch (KeyCode)
                         {
-                            case Keys.A:
-                                PostBrowser.Document.ExecCommand("SelectAll", false, null);
-                                return true;
-                            case Keys.C:
-                            case Keys.Insert:
-                                string _selText = WebBrowser_GetSelectionText(ref PostBrowser);
-                                if (!string.IsNullOrEmpty(_selText))
-                                {
-                                    try
-                                    {
-                                        Clipboard.SetDataObject(_selText, false, 5, 100);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        MessageBox.Show(ex.Message);
-                                    }
-                                }
-                                return true;
                             case Keys.Y:
                                 MultiLineMenuItem.Checked = !MultiLineMenuItem.Checked;
                                 MultiLineMenuItem_Click(null, null);
@@ -8218,6 +8200,24 @@ namespace OpenTween
             if (KeyRes)
             {
                 e.IsInputKey = true;
+                return;
+            }
+
+            if (Enum.IsDefined(typeof(Shortcut), (Shortcut)e.KeyData))
+            {
+                var shortcut = (Shortcut)e.KeyData;
+                switch (shortcut)
+                {
+                    case Shortcut.CtrlA:
+                    case Shortcut.CtrlC:
+                    case Shortcut.CtrlIns:
+                        // 既定の動作を有効にする
+                        return;
+                    default:
+                        // その他のショートカットキーは無効にする
+                        e.IsInputKey = true;
+                        return;
+                }
             }
         }
         public bool TabRename(ref string tabName)
@@ -10567,20 +10567,10 @@ namespace OpenTween
             //}
         }
 
-        public string WebBrowser_GetSelectionText(ref WebBrowser ComponentInstance)
-        {
-            //発言詳細で「選択文字列をコピー」を行う
-            //WebBrowserコンポーネントのインスタンスを渡す
-            Type typ = ComponentInstance.ActiveXInstance.GetType();
-            object _SelObj = typ.InvokeMember("selection", BindingFlags.GetProperty, null, ComponentInstance.Document.DomDocument, null);
-            object _objRange = _SelObj.GetType().InvokeMember("createRange", BindingFlags.InvokeMethod, null, _SelObj, null);
-            return (string)_objRange.GetType().InvokeMember("text", BindingFlags.GetProperty, null, _objRange, null);
-        }
-
         private void SelectionCopyContextMenuItem_Click(object sender, EventArgs e)
         {
             //発言詳細で「選択文字列をコピー」
-            string _selText = WebBrowser_GetSelectionText(ref PostBrowser);
+            string _selText = this.PostBrowser.GetSelectedText();
             try
             {
                 Clipboard.SetDataObject(_selText, false, 5, 100);
@@ -10594,7 +10584,7 @@ namespace OpenTween
         private void doSearchToolStrip(string url)
         {
             //発言詳細で「選択文字列で検索」（選択文字列取得）
-            string _selText = WebBrowser_GetSelectionText(ref PostBrowser);
+            string _selText = this.PostBrowser.GetSelectedText();
 
             if (_selText != null)
             {
@@ -10707,7 +10697,7 @@ namespace OpenTween
                 ListManageUserContextToolStripMenuItem.Enabled = false;
             }
             // 文字列選択されていないときは選択文字列関係の項目を非表示に
-            string _selText = WebBrowser_GetSelectionText(ref PostBrowser);
+            string _selText = this.PostBrowser.GetSelectedText();
             if (_selText == null)
             {
                 SelectionSearchContextMenuItem.Enabled = false;
@@ -10744,7 +10734,7 @@ namespace OpenTween
         private void CurrentTabToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //発言詳細の選択文字列で現在のタブを検索
-            string _selText = WebBrowser_GetSelectionText(ref PostBrowser);
+            string _selText = this.PostBrowser.GetSelectedText();
 
             if (_selText != null)
             {
@@ -10775,7 +10765,10 @@ namespace OpenTween
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                SelectMedia_DragDrop(e);
+                if (!e.Data.GetDataPresent(DataFormats.Html, false))  // WebBrowserコントロールからの絵文字画像Drag&Dropは弾く
+                {
+                    SelectMedia_DragDrop(e);
+                }
             }
             else if (e.Data.GetDataPresent("UniformResourceLocatorW"))
             {
@@ -10791,6 +10784,12 @@ namespace OpenTween
                     this.StatusText.Text = appendText;
                 else
                     this.StatusText.Text += " " + appendText;
+            }
+            else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+            {
+                var text = (string)e.Data.GetData(DataFormats.UnicodeText);
+                if (text != null)
+                    this.StatusText.Text += text;
             }
             else if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
@@ -10855,28 +10854,33 @@ namespace OpenTween
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                SelectMedia_DragEnter(e);
-            }
-        }
-
-        private void TweenMain_DragOver(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                SelectMedia_DragOver(e);
+                if (!e.Data.GetDataPresent(DataFormats.Html, false))  // WebBrowserコントロールからの絵文字画像Drag&Dropは弾く
+                {
+                    SelectMedia_DragEnter(e);
+                    return;
+                }
             }
             else if (e.Data.GetDataPresent("UniformResourceLocatorW"))
             {
                 e.Effect = DragDropEffects.Copy;
+                return;
+            }
+            else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+            {
+                e.Effect = DragDropEffects.Copy;
+                return;
             }
             else if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
                 e.Effect = DragDropEffects.Copy;
+                return;
             }
-            else
-            {
-                e.Effect = DragDropEffects.None;
-            }
+
+            e.Effect = DragDropEffects.None;
+        }
+
+        private void TweenMain_DragOver(object sender, DragEventArgs e)
+        {
         }
 
         public bool IsNetworkAvailable()
@@ -12608,11 +12612,6 @@ namespace OpenTween
             e.Effect = DragDropEffects.None;
         }
 
-        private void SelectMedia_DragOver(DragEventArgs e)
-        {
-            //何も触らない
-        }
-
         private void SelectMedia_DragDrop(DragEventArgs e)
         {
             this.Activate();
@@ -13219,7 +13218,7 @@ namespace OpenTween
 
         private async void SelectionTranslationToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var text = this.WebBrowser_GetSelectionText(ref this.PostBrowser);
+            var text = this.PostBrowser.GetSelectedText();
             await this.doTranslation(text);
         }
 
