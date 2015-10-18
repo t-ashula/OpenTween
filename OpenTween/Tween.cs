@@ -75,21 +75,27 @@ namespace OpenTween
         private const string detailHtmlFormatHeaderMono = 
             "<html><head><meta http-equiv=\"X-UA-Compatible\" content=\"IE=8\">"
             + "<style type=\"text/css\"><!-- "
-            + "pre {font-family: \"%FONT_FAMILY%\", sans-serif; font-size: %FONT_SIZE%pt; margin: 0; word-wrap: break-word; color:rgb(%FONT_COLOR%);} "
+            + "body, p, pre {margin: 0;} "
+            + "pre {font-family: \"%FONT_FAMILY%\", sans-serif; font-size: %FONT_SIZE%pt; background-color:rgb(%BG_COLOR%); word-wrap: break-word; color:rgb(%FONT_COLOR%);} "
             + "a:link, a:visited, a:active, a:hover {color:rgb(%LINK_COLOR%); } "
-            + "img.emoji {width: 1em; height: 1em; margin: 0 .05em 0 .1em; vertical-align: -0.1em;} "
+            + "img.emoji {width: 1em; height: 1em; margin: 0 .05em 0 .1em; vertical-align: -0.1em; border: none;} "
+            + ".quote-tweet {border: 1px solid #ccc; margin: 1em; padding: 0.5em;} "
+            + ".quote-tweet-link {color: inherit !important; text-decoration: none;}"
             + "--></style>"
-            + "</head><body style=\"margin:0px; background-color:rgb(%BG_COLOR%);\"><pre>";
+            + "</head><body><pre>";
         private const string detailHtmlFormatFooterMono = "</pre></body></html>";
         private const string detailHtmlFormatHeaderColor = 
             "<html><head><meta http-equiv=\"X-UA-Compatible\" content=\"IE=8\">"
             + "<style type=\"text/css\"><!-- "
-            + "p {font-family: \"%FONT_FAMILY%\", sans-serif; font-size: %FONT_SIZE%pt; margin: 0; word-wrap: break-word; color:rgb(%FONT_COLOR%);} "
+            + "body, p, pre {margin: 0;} "
+            + "body {font-family: \"%FONT_FAMILY%\", sans-serif; font-size: %FONT_SIZE%pt; background-color:rgb(%BG_COLOR%); margin: 0; word-wrap: break-word; color:rgb(%FONT_COLOR%);} "
             + "a:link, a:visited, a:active, a:hover {color:rgb(%LINK_COLOR%); } "
-            + "img.emoji {width: 1em; height: 1em; margin: 0 .05em 0 .1em; vertical-align: -0.1em;} "
+            + "img.emoji {width: 1em; height: 1em; margin: 0 .05em 0 .1em; vertical-align: -0.1em; border: none;} "
+            + ".quote-tweet {border: 1px solid #ccc; margin: 1em; padding: 0.5em;} "
+            + ".quote-tweet-link {color: inherit !important; text-decoration: none;}"
             + "--></style>"
-            + "</head><body style=\"margin:0px; background-color:rgb(%BG_COLOR%);\"><p><span style=\"vertical-align:text-bottom\">";
-        private const string detailHtmlFormatFooterColor = "</span></p></body></html>";
+            + "</head><body><p>";
+        private const string detailHtmlFormatFooterColor = "</p></body></html>";
         private string detailHtmlFormatHeader;
         private string detailHtmlFormatFooter;
 
@@ -162,8 +168,7 @@ namespace OpenTween
         private int _hisIdx;                  //発言履歴カレントインデックス
 
         //発言投稿時のAPI引数（発言編集時に設定。手書きreplyでは設定されない）
-        private long? _reply_to_id;     // リプライ先のステータスID 0の場合はリプライではない 注：複数あてのものはリプライではない
-        private string _reply_to_name;    // リプライ先ステータスの書き込み者の名前
+        private Tuple<long, string> inReplyTo = null; // リプライ先のステータスID・スクリーン名
 
         //時速表示用
         private List<DateTime> _postTimestamps = new List<DateTime>();
@@ -262,7 +267,7 @@ namespace OpenTween
             public long? inReplyToId = null;
             public string inReplyToName = null;
             public string imageService = "";      //画像投稿サービス名
-            public string[] imagePath = null;
+            public IMediaItem[] mediaItems = null;
             public PostingStatus()
             {
             }
@@ -298,34 +303,32 @@ namespace OpenTween
 
             if (disposing)
             {
-                if (this.components != null)
-                    this.components.Dispose();
+                this.components?.Dispose();
 
                 //後始末
                 SearchDialog.Dispose();
                 UrlDialog.Dispose();
-                if (NIconAt != null) NIconAt.Dispose();
-                if (NIconAtRed != null) NIconAtRed.Dispose();
-                if (NIconAtSmoke != null) NIconAtSmoke.Dispose();
+                NIconAt?.Dispose();
+                NIconAtRed?.Dispose();
+                NIconAtSmoke?.Dispose();
                 foreach (var iconRefresh in this.NIconRefresh)
                 {
-                    if (iconRefresh != null)
-                        iconRefresh.Dispose();
+                    iconRefresh?.Dispose();
                 }
-                if (TabIcon != null) TabIcon.Dispose();
-                if (MainIcon != null) MainIcon.Dispose();
-                if (ReplyIcon != null) ReplyIcon.Dispose();
-                if (ReplyIconBlink != null) ReplyIconBlink.Dispose();
+                TabIcon?.Dispose();
+                MainIcon?.Dispose();
+                ReplyIcon?.Dispose();
+                ReplyIconBlink?.Dispose();
                 _listViewImageList.Dispose();
                 _brsHighLight.Dispose();
-                if (_brsBackColorMine != null) _brsBackColorMine.Dispose();
-                if (_brsBackColorAt != null) _brsBackColorAt.Dispose();
-                if (_brsBackColorYou != null) _brsBackColorYou.Dispose();
-                if (_brsBackColorAtYou != null) _brsBackColorAtYou.Dispose();
-                if (_brsBackColorAtFromTarget != null) _brsBackColorAtFromTarget.Dispose();
-                if (_brsBackColorAtTo != null) _brsBackColorAtTo.Dispose();
-                if (_brsBackColorNone != null) _brsBackColorNone.Dispose();
-                if (_brsDeactiveSelection != null) _brsDeactiveSelection.Dispose();
+                _brsBackColorMine?.Dispose();
+                _brsBackColorAt?.Dispose();
+                _brsBackColorYou?.Dispose();
+                _brsBackColorAtYou?.Dispose();
+                _brsBackColorAtFromTarget?.Dispose();
+                _brsBackColorAtTo?.Dispose();
+                _brsBackColorNone?.Dispose();
+                _brsDeactiveSelection?.Dispose();
                 //sf.Dispose();
                 sfTab.Dispose();
 
@@ -337,8 +340,7 @@ namespace OpenTween
                     this.IconCache.Dispose();
                 }
 
-                if (this.thumbnailTokenSource != null)
-                    this.thumbnailTokenSource.Dispose();
+                this.thumbnailTokenSource?.Dispose();
 
                 this.itemCacheLock.Dispose();
                 this.tw.Dispose();
@@ -443,108 +445,89 @@ namespace OpenTween
 
         private void InitColumns(ListView list, bool startup)
         {
-            ColumnHeader _colHd1 = new ColumnHeader();  //アイコン
-            ColumnHeader _colHd2 = new ColumnHeader();  //ニックネーム
-            ColumnHeader _colHd3 = new ColumnHeader();  //本文
-            ColumnHeader _colHd4 = new ColumnHeader();  //日付
-            ColumnHeader _colHd5 = new ColumnHeader();  //ユーザID
-            ColumnHeader _colHd6 = new ColumnHeader();  //未読
-            ColumnHeader _colHd7 = new ColumnHeader();  //マーク＆プロテクト
-            ColumnHeader _colHd8 = new ColumnHeader();  //ソース
+            this.InitColumnText();
 
-            if (!_iconCol)
+            ColumnHeader[] columns;
+            if (this._iconCol)
             {
-                list.Columns.AddRange(new ColumnHeader[] { _colHd1, _colHd2, _colHd3, _colHd4, _colHd5, _colHd6, _colHd7, _colHd8 });
-            }
-            else
-            {
-                list.Columns.AddRange(new ColumnHeader[] { _colHd1, _colHd3 });
-            }
-
-            InitColumnText();
-            _colHd1.Text = ColumnText[0];
-            _colHd1.Width = 48;
-            _colHd2.Text = ColumnText[1];
-            _colHd2.Width = 80;
-            _colHd3.Text = ColumnText[2];
-            _colHd3.Width = 300;
-            _colHd4.Text = ColumnText[3];
-            _colHd4.Width = 50;
-            _colHd5.Text = ColumnText[4];
-            _colHd5.Width = 50;
-            _colHd6.Text = ColumnText[5];
-            _colHd6.Width = 16;
-            _colHd7.Text = ColumnText[6];
-            _colHd7.Width = 16;
-            _colHd8.Text = ColumnText[7];
-            _colHd8.Width = 50;
-
-            int[] dispOrder = new int[8];
-            if (!startup)
-            {
-                for (int i = 0; i < _curList.Columns.Count; i++)
+                columns = new[]
                 {
-                    for (int j = 0; j < _curList.Columns.Count; j++)
-                    {
-                        if (_curList.Columns[j].DisplayIndex == i)
-                        {
-                            dispOrder[i] = j;
-                            break;
-                        }
-                    }
-                }
-                for (int i = 0; i < _curList.Columns.Count; i++)
-                {
-                    list.Columns[i].Width = _curList.Columns[i].Width;
-                    list.Columns[dispOrder[i]].DisplayIndex = i;
-                }
-            }
-            else
-            {
-                var widthScaleFactor = this.CurrentAutoScaleDimensions.Width / this._cfgLocal.ScaleDimension.Width;
+                    new ColumnHeader { Text = this.ColumnText[0], Width = 48 }, // アイコン
+                    new ColumnHeader { Text = this.ColumnText[2], Width = 300 },  // 本文
+                };
 
-                if (_iconCol)
+                if (startup)
                 {
-                    list.Columns[0].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width1);
-                    list.Columns[1].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width3);
-                    list.Columns[0].DisplayIndex = 0;
-                    list.Columns[1].DisplayIndex = 1;
+                    var widthScaleFactor = this.CurrentAutoScaleDimensions.Width / this._cfgLocal.ScaleDimension.Width;
+
+                    columns[0].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width1);
+                    columns[1].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width3);
+                    columns[0].DisplayIndex = 0;
+                    columns[1].DisplayIndex = 1;
                 }
                 else
                 {
-                    for (int i = 0; i <= 7; i++)
+                    var idx = 0;
+                    foreach (var curListColumn in this._curList.Columns.Cast<ColumnHeader>())
                     {
-                        if (_cfgLocal.DisplayIndex1 == i)
-                            dispOrder[i] = 0;
-                        else if (_cfgLocal.DisplayIndex2 == i)
-                            dispOrder[i] = 1;
-                        else if (_cfgLocal.DisplayIndex3 == i)
-                            dispOrder[i] = 2;
-                        else if (_cfgLocal.DisplayIndex4 == i)
-                            dispOrder[i] = 3;
-                        else if (_cfgLocal.DisplayIndex5 == i)
-                            dispOrder[i] = 4;
-                        else if (_cfgLocal.DisplayIndex6 == i)
-                            dispOrder[i] = 5;
-                        else if (_cfgLocal.DisplayIndex7 == i)
-                            dispOrder[i] = 6;
-                        else if (_cfgLocal.DisplayIndex8 == i)
-                            dispOrder[i] = 7;
-                    }
-                    list.Columns[0].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width1);
-                    list.Columns[1].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width2);
-                    list.Columns[2].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width3);
-                    list.Columns[3].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width4);
-                    list.Columns[4].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width5);
-                    list.Columns[5].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width6);
-                    list.Columns[6].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width7);
-                    list.Columns[7].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width8);
-                    for (int i = 0; i <= 7; i++)
-                    {
-                        list.Columns[dispOrder[i]].DisplayIndex = i;
+                        columns[idx].Width = curListColumn.Width;
+                        columns[idx].DisplayIndex = curListColumn.DisplayIndex;
+                        idx++;
                     }
                 }
             }
+            else
+            {
+                columns = new[]
+                {
+                    new ColumnHeader { Text = this.ColumnText[0], Width = 48 }, // アイコン
+                    new ColumnHeader { Text = this.ColumnText[1], Width = 80 }, // ニックネーム
+                    new ColumnHeader { Text = this.ColumnText[2], Width = 300 }, // 本文
+                    new ColumnHeader { Text = this.ColumnText[3], Width = 50 }, // 日付
+                    new ColumnHeader { Text = this.ColumnText[4], Width = 50 }, // ユーザID
+                    new ColumnHeader { Text = this.ColumnText[5], Width = 16 }, // 未読
+                    new ColumnHeader { Text = this.ColumnText[6], Width = 16 }, // マーク＆プロテクト
+                    new ColumnHeader { Text = this.ColumnText[7], Width = 50 }, // ソース
+                };
+
+                if (startup)
+                {
+                    var widthScaleFactor = this.CurrentAutoScaleDimensions.Width / this._cfgLocal.ScaleDimension.Width;
+
+                    columns[0].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width1);
+                    columns[1].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width2);
+                    columns[2].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width3);
+                    columns[3].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width4);
+                    columns[4].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width5);
+                    columns[5].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width6);
+                    columns[6].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width7);
+                    columns[7].Width = ScaleBy(widthScaleFactor, _cfgLocal.Width8);
+
+                    var displayIndex = new[] {
+                        this._cfgLocal.DisplayIndex1, this._cfgLocal.DisplayIndex2,
+                        this._cfgLocal.DisplayIndex3, this._cfgLocal.DisplayIndex4,
+                        this._cfgLocal.DisplayIndex5, this._cfgLocal.DisplayIndex6,
+                        this._cfgLocal.DisplayIndex7, this._cfgLocal.DisplayIndex8
+                    };
+
+                    foreach (var i in Enumerable.Range(0, displayIndex.Length))
+                    {
+                        columns[i].DisplayIndex = displayIndex[i];
+                    }
+                }
+                else
+                {
+                    var idx = 0;
+                    foreach (var curListColumn in this._curList.Columns.Cast<ColumnHeader>())
+                    {
+                        columns[idx].Width = curListColumn.Width;
+                        columns[idx].DisplayIndex = curListColumn.DisplayIndex;
+                        idx++;
+                    }
+                }
+            }
+
+            list.Columns.AddRange(columns);
         }
 
         private void InitColumnText()
@@ -633,6 +616,11 @@ namespace OpenTween
             _ignoreConfigSave = true;
             this.Visible = false;
 
+            if (MyApplication.StartupOptions.ContainsKey("d"))
+                MyCommon.TraceFlag = true;
+
+            InitializeTraceFrag();
+
             //Win32Api.SetProxy(HttpConnection.ProxyType.Specified, "127.0.0.1", 8080, "user", "pass")
 
             new InternetSecurityManager(PostBrowser);
@@ -641,80 +629,31 @@ namespace OpenTween
             MyCommon.TwitterApiInfo.AccessLimitUpdated += TwitterApiStatus_AccessLimitUpdated;
             Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
 
-            if (MyApplication.StartupOptions.ContainsKey("d"))
-                MyCommon.TraceFlag = true;
-
             Regex.CacheSize = 100;
-
-            InitializeTraceFrag();
-            LoadIcons(); // アイコン読み込み
 
             //発言保持クラス
             _statuses = TabInformations.GetInstance();
 
             //アイコン設定
+            LoadIcons();
             this.Icon = MainIcon;              //メインフォーム（TweenMain）
             NotifyIcon1.Icon = NIconAt;      //タスクトレイ
             TabImage.Images.Add(TabIcon);    //タブ見出し
 
-            SearchDialog.Owner = this;
-            UrlDialog.Owner = this;
-
-            _history.Add(new PostingStatus());
-            _hisIdx = 0;
-            _reply_to_id = null;
-            _reply_to_name = null;
-
             //<<<<<<<<<設定関連>>>>>>>>>
-            //設定コンバージョン
-            //ConvertConfig();
-
             ////設定読み出し
             LoadConfig();
 
             // 現在の DPI と設定保存時の DPI との比を取得する
             var configScaleFactor = this._cfgLocal.GetConfigScaleFactor(this.CurrentAutoScaleDimensions);
 
-            //新着バルーン通知のチェック状態設定
-            NewPostPopMenuItem.Checked = _cfgCommon.NewAllPop;
-            this.NotifyFileMenuItem.Checked = NewPostPopMenuItem.Checked;
-
-            //フォント＆文字色＆背景色保持
-            _fntUnread = _cfgLocal.FontUnread;
-            _clUnread = _cfgLocal.ColorUnread;
-            _fntReaded = _cfgLocal.FontRead;
-            _clReaded = _cfgLocal.ColorRead;
-            _clFav = _cfgLocal.ColorFav;
-            _clOWL = _cfgLocal.ColorOWL;
-            _clRetweet = _cfgLocal.ColorRetweet;
-            _fntDetail = _cfgLocal.FontDetail;
-            _clDetail = _cfgLocal.ColorDetail;
-            _clDetailLink = _cfgLocal.ColorDetailLink;
-            _clDetailBackcolor = _cfgLocal.ColorDetailBackcolor;
-            _clSelf = _cfgLocal.ColorSelf;
-            _clAtSelf = _cfgLocal.ColorAtSelf;
-            _clTarget = _cfgLocal.ColorTarget;
-            _clAtTarget = _cfgLocal.ColorAtTarget;
-            _clAtFromTarget = _cfgLocal.ColorAtFromTarget;
-            _clAtTo = _cfgLocal.ColorAtTo;
-            _clListBackcolor = _cfgLocal.ColorListBackcolor;
-            _clInputBackcolor = _cfgLocal.ColorInputBackcolor;
-            _clInputFont = _cfgLocal.ColorInputFont;
-            _fntInputFont = _cfgLocal.FontInputFont;
-
+            // UIフォント設定
             var fontUIGlobal = this._cfgLocal.FontUIGlobal;
             if (fontUIGlobal != null)
             {
                 OTBaseForm.GlobalFont = fontUIGlobal;
                 this.Font = fontUIGlobal;
             }
-
-            // StringFormatオブジェクトへの事前設定
-            //sf.Alignment = StringAlignment.Near;             // Textを近くへ配置（左から右の場合は左寄せ）
-            //sf.LineAlignment = StringAlignment.Near;         // Textを近くへ配置（上寄せ）
-            //sf.FormatFlags = StringFormatFlags.LineLimit;    // 
-            sfTab.Alignment = StringAlignment.Center;
-            sfTab.LineAlignment = StringAlignment.Center;
 
             //不正値チェック
             if (!MyApplication.StartupOptions.ContainsKey("nolimit"))
@@ -738,52 +677,38 @@ namespace OpenTween
                     this._cfgCommon.ListsPeriod = 15;
             }
 
-            if (this._cfgCommon.CountApi < 20 || this._cfgCommon.CountApi > 200)
+            if (!Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.Timeline, this._cfgCommon.CountApi))
                 this._cfgCommon.CountApi = 60;
-            if (this._cfgCommon.CountApiReply < 20 || this._cfgCommon.CountApiReply > 200)
+            if (!Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.Reply, this._cfgCommon.CountApiReply))
                 this._cfgCommon.CountApiReply = 40;
 
-            HttpTwitter.TwitterUrl = _cfgCommon.TwitterUrl;
+            if (this._cfgCommon.MoreCountApi != 0 && !Twitter.VerifyMoreApiResultCount(this._cfgCommon.MoreCountApi))
+                this._cfgCommon.MoreCountApi = 200;
+            if (this._cfgCommon.FirstCountApi != 0 && !Twitter.VerifyFirstApiResultCount(this._cfgCommon.FirstCountApi))
+                this._cfgCommon.FirstCountApi = 100;
+
+            if (this._cfgCommon.FavoritesCountApi != 0 && !Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.Favorites, this._cfgCommon.FavoritesCountApi))
+                this._cfgCommon.FavoritesCountApi = 40;
+            if (this._cfgCommon.ListCountApi != 0 && !Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.List, this._cfgCommon.ListCountApi))
+                this._cfgCommon.ListCountApi = 100;
+            if (this._cfgCommon.SearchCountApi != 0 && !Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.PublicSearch, this._cfgCommon.SearchCountApi))
+                this._cfgCommon.SearchCountApi = 100;
+            if (this._cfgCommon.UserTimelineCountApi != 0 && !Twitter.VerifyApiResultCount(MyCommon.WORKERTYPE.UserTimeline, this._cfgCommon.UserTimelineCountApi))
+                this._cfgCommon.UserTimelineCountApi = 20;
+
+            //廃止サービスが選択されていた場合ux.nuへ読み替え
+            if (this._cfgCommon.AutoShortUrlFirst < 0)
+                this._cfgCommon.AutoShortUrlFirst = MyCommon.UrlConverter.Uxnu;
+
+            HttpTwitter.TwitterUrl = this._cfgCommon.TwitterUrl;
 
             //認証関連
-            if (string.IsNullOrEmpty(_cfgCommon.Token)) _cfgCommon.UserName = "";
-            tw.Initialize(_cfgCommon.Token, _cfgCommon.TokenSecret, _cfgCommon.UserName, _cfgCommon.UserId);
-
-            //新着取得時のリストスクロールをするか。trueならスクロールしない
-            ListLockMenuItem.Checked = _cfgCommon.ListLock;
-            this.LockListFileMenuItem.Checked = _cfgCommon.ListLock;
-            //サウンド再生（タブ別設定より優先）
-            this.PlaySoundMenuItem.Checked = this._cfgCommon.PlaySound;
-            this.PlaySoundFileMenuItem.Checked = this._cfgCommon.PlaySound;
-
-            //廃止サービスが選択されていた場合bit.lyへ読み替え
-            if (_cfgCommon.AutoShortUrlFirst < 0)
-                _cfgCommon.AutoShortUrlFirst = MyCommon.UrlConverter.Uxnu;
-
-            AtIdSupl = new AtIdSupplement(SettingAtIdList.Load().AtIdList, "@");
-
-            this.IdeographicSpaceToSpaceToolStripMenuItem.Checked = _cfgCommon.WideSpaceConvert;
-            this.ToolStripFocusLockMenuItem.Checked = _cfgCommon.FocusLockToStatusText;
-
-            //Regex statregex = new Regex("^0*");
-            this.recommendedStatusFooter = " [TWNv" + Regex.Replace(MyCommon.FileVersion.Replace(".", ""), "^0*", "") + "]";
-
-            //ハッシュタグ関連
-            HashSupl = new AtIdSupplement(_cfgCommon.HashTags, "#");
-            HashMgr = new HashtagManage(HashSupl,
-                                    _cfgCommon.HashTags.ToArray(),
-                                    _cfgCommon.HashSelected,
-                                    _cfgCommon.HashIsPermanent,
-                                    _cfgCommon.HashIsHead,
-                                    _cfgCommon.HashIsNotAddToAtReply);
-            if (!string.IsNullOrEmpty(HashMgr.UseHash) && HashMgr.IsPermanent) HashStripSplitButton.Text = HashMgr.UseHash;
+            if (string.IsNullOrEmpty(this._cfgCommon.Token)) this._cfgCommon.UserName = "";
+            tw.Initialize(this._cfgCommon.Token, this._cfgCommon.TokenSecret, this._cfgCommon.UserName, this._cfgCommon.UserId);
 
             _initial = true;
 
             Networking.Initialize();
-
-            //アイコンリスト作成
-            this.IconCache = new ImageCache();
 
             bool saveRequired = false;
             bool firstRun = false;
@@ -801,57 +726,6 @@ namespace OpenTween
                     Application.Exit();  //強制終了
                     return;
                 }
-
-                //新しい設定を反映
-                //フォント＆文字色＆背景色保持
-                _fntUnread = this._cfgLocal.FontUnread;
-                _clUnread = this._cfgLocal.ColorUnread;
-                _fntReaded = this._cfgLocal.FontRead;
-                _clReaded = this._cfgLocal.ColorRead;
-                _clFav = this._cfgLocal.ColorFav;
-                _clOWL = this._cfgLocal.ColorOWL;
-                _clRetweet = this._cfgLocal.ColorRetweet;
-                _fntDetail = this._cfgLocal.FontDetail;
-                _clDetail = this._cfgLocal.ColorDetail;
-                _clDetailLink = this._cfgLocal.ColorDetailLink;
-                _clDetailBackcolor = this._cfgLocal.ColorDetailBackcolor;
-                _clSelf = this._cfgLocal.ColorSelf;
-                _clAtSelf = this._cfgLocal.ColorAtSelf;
-                _clTarget = this._cfgLocal.ColorTarget;
-                _clAtTarget = this._cfgLocal.ColorAtTarget;
-                _clAtFromTarget = this._cfgLocal.ColorAtFromTarget;
-                _clAtTo = this._cfgLocal.ColorAtTo;
-                _clListBackcolor = this._cfgLocal.ColorListBackcolor;
-                _clInputBackcolor = this._cfgLocal.ColorInputBackcolor;
-                _clInputFont = this._cfgLocal.ColorInputFont;
-                _fntInputFont = this._cfgLocal.FontInputFont;
-            }
-
-            _brsBackColorMine = new SolidBrush(_clSelf);
-            _brsBackColorAt = new SolidBrush(_clAtSelf);
-            _brsBackColorYou = new SolidBrush(_clTarget);
-            _brsBackColorAtYou = new SolidBrush(_clAtTarget);
-            _brsBackColorAtFromTarget = new SolidBrush(_clAtFromTarget);
-            _brsBackColorAtTo = new SolidBrush(_clAtTo);
-            //_brsBackColorNone = new SolidBrush(Color.FromKnownColor(KnownColor.Window));
-            _brsBackColorNone = new SolidBrush(_clListBackcolor);
-
-            InitDetailHtmlFormat();
-
-            if (this._cfgCommon.HotkeyEnabled)
-            {
-                //////グローバルホットキーの登録
-                HookGlobalHotkey.ModKeys modKey = HookGlobalHotkey.ModKeys.None;
-                if ((this._cfgCommon.HotkeyModifier & Keys.Alt) == Keys.Alt)
-                    modKey |= HookGlobalHotkey.ModKeys.Alt;
-                if ((this._cfgCommon.HotkeyModifier & Keys.Control) == Keys.Control)
-                    modKey |= HookGlobalHotkey.ModKeys.Ctrl;
-                if ((this._cfgCommon.HotkeyModifier & Keys.Shift) == Keys.Shift)
-                    modKey |= HookGlobalHotkey.ModKeys.Shift;
-                if ((this._cfgCommon.HotkeyModifier & Keys.LWin) == Keys.LWin)
-                    modKey |= HookGlobalHotkey.ModKeys.Win;
-
-                _hookGlobalHotkey.RegisterOriginalHotkey(this._cfgCommon.HotkeyKey, this._cfgCommon.HotkeyValue, modKey);
             }
 
             //Twitter用通信クラス初期化
@@ -859,6 +733,30 @@ namespace OpenTween
             Networking.SetWebProxy(this._cfgLocal.ProxyType,
                 this._cfgLocal.ProxyAddress, this._cfgLocal.ProxyPort,
                 this._cfgLocal.ProxyUser, this._cfgLocal.ProxyPassword);
+            Networking.ForceIPv4 = this._cfgCommon.ForceIPv4;
+
+            HttpTwitter.TwitterUrl = this._cfgCommon.TwitterUrl;
+            tw.RestrictFavCheck = this._cfgCommon.RestrictFavCheck;
+            tw.ReadOwnPost = this._cfgCommon.ReadOwnPost;
+            tw.TrackWord = this._cfgCommon.TrackWord;
+            TrackToolStripMenuItem.Checked = !String.IsNullOrEmpty(tw.TrackWord);
+            tw.AllAtReply = this._cfgCommon.AllAtReply;
+            AllrepliesToolStripMenuItem.Checked = tw.AllAtReply;
+            ShortUrl.Instance.DisableExpanding = !this._cfgCommon.TinyUrlResolve;
+            ShortUrl.Instance.BitlyId = this._cfgCommon.BilyUser;
+            ShortUrl.Instance.BitlyKey = this._cfgCommon.BitlyPwd;
+
+            // アクセストークンが有効であるか確認する
+            // ここが Twitter API への最初のアクセスになるようにすること
+            try
+            {
+                this.tw.VerifyCredentials();
+            }
+            catch (WebApiException ex)
+            {
+                MessageBox.Show(this, string.Format(Properties.Resources.StartupAuthError_Text, ex.Message),
+                    Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
 
             //サムネイル関連の初期化
             //プロキシ設定等の通信まわりの初期化が済んでから処理する
@@ -872,19 +770,88 @@ namespace OpenTween
                 x.Initialize(ApplicationSettings.TwitterConsumerKey, ApplicationSettings.TwitterConsumerSecret,
                     this.tw.AccessToken, this.tw.AccessTokenSecret, "", "");
 
-            tw.RestrictFavCheck = this._cfgCommon.RestrictFavCheck;
-            tw.ReadOwnPost = this._cfgCommon.ReadOwnPost;
-            ShortUrl.Instance.DisableExpanding = !this._cfgCommon.TinyUrlResolve;
-            ShortUrl.Instance.BitlyId = this._cfgCommon.BilyUser;
-            ShortUrl.Instance.BitlyKey = this._cfgCommon.BitlyPwd;
-            HttpTwitter.TwitterUrl = _cfgCommon.TwitterUrl;
-            tw.TrackWord = _cfgCommon.TrackWord;
-            TrackToolStripMenuItem.Checked = !String.IsNullOrEmpty(tw.TrackWord);
-            tw.AllAtReply = _cfgCommon.AllAtReply;
-            AllrepliesToolStripMenuItem.Checked = tw.AllAtReply;
-
             //画像投稿サービス
             ImageSelector.Initialize(tw, this.tw.Configuration, _cfgCommon.UseImageServiceName, _cfgCommon.UseImageService);
+
+            //ハッシュタグ/@id関連
+            AtIdSupl = new AtIdSupplement(SettingAtIdList.Load().AtIdList, "@");
+            HashSupl = new AtIdSupplement(_cfgCommon.HashTags, "#");
+            HashMgr = new HashtagManage(HashSupl,
+                                    _cfgCommon.HashTags.ToArray(),
+                                    _cfgCommon.HashSelected,
+                                    _cfgCommon.HashIsPermanent,
+                                    _cfgCommon.HashIsHead,
+                                    _cfgCommon.HashIsNotAddToAtReply);
+            if (!string.IsNullOrEmpty(HashMgr.UseHash) && HashMgr.IsPermanent) HashStripSplitButton.Text = HashMgr.UseHash;
+
+            //アイコンリスト作成
+            this.IconCache = new ImageCache();
+
+            //フォント＆文字色＆背景色保持
+            _fntUnread = this._cfgLocal.FontUnread;
+            _clUnread = this._cfgLocal.ColorUnread;
+            _fntReaded = this._cfgLocal.FontRead;
+            _clReaded = this._cfgLocal.ColorRead;
+            _clFav = this._cfgLocal.ColorFav;
+            _clOWL = this._cfgLocal.ColorOWL;
+            _clRetweet = this._cfgLocal.ColorRetweet;
+            _fntDetail = this._cfgLocal.FontDetail;
+            _clDetail = this._cfgLocal.ColorDetail;
+            _clDetailLink = this._cfgLocal.ColorDetailLink;
+            _clDetailBackcolor = this._cfgLocal.ColorDetailBackcolor;
+            _clSelf = this._cfgLocal.ColorSelf;
+            _clAtSelf = this._cfgLocal.ColorAtSelf;
+            _clTarget = this._cfgLocal.ColorTarget;
+            _clAtTarget = this._cfgLocal.ColorAtTarget;
+            _clAtFromTarget = this._cfgLocal.ColorAtFromTarget;
+            _clAtTo = this._cfgLocal.ColorAtTo;
+            _clListBackcolor = this._cfgLocal.ColorListBackcolor;
+            _clInputBackcolor = this._cfgLocal.ColorInputBackcolor;
+            _clInputFont = this._cfgLocal.ColorInputFont;
+            _fntInputFont = this._cfgLocal.FontInputFont;
+
+            _brsBackColorMine = new SolidBrush(_clSelf);
+            _brsBackColorAt = new SolidBrush(_clAtSelf);
+            _brsBackColorYou = new SolidBrush(_clTarget);
+            _brsBackColorAtYou = new SolidBrush(_clAtTarget);
+            _brsBackColorAtFromTarget = new SolidBrush(_clAtFromTarget);
+            _brsBackColorAtTo = new SolidBrush(_clAtTo);
+            //_brsBackColorNone = new SolidBrush(Color.FromKnownColor(KnownColor.Window));
+            _brsBackColorNone = new SolidBrush(_clListBackcolor);
+
+            // StringFormatオブジェクトへの事前設定
+            //sf.Alignment = StringAlignment.Near;             // Textを近くへ配置（左から右の場合は左寄せ）
+            //sf.LineAlignment = StringAlignment.Near;         // Textを近くへ配置（上寄せ）
+            //sf.FormatFlags = StringFormatFlags.LineLimit;    // 
+            sfTab.Alignment = StringAlignment.Center;
+            sfTab.LineAlignment = StringAlignment.Center;
+
+            InitDetailHtmlFormat();
+
+            //Regex statregex = new Regex("^0*");
+            this.recommendedStatusFooter = " [TWNv" + Regex.Replace(MyCommon.FileVersion.Replace(".", ""), "^0*", "") + "]";
+
+            _history.Add(new PostingStatus());
+            _hisIdx = 0;
+            this.inReplyTo = null;
+
+            //各種ダイアログ設定
+            SearchDialog.Owner = this;
+            UrlDialog.Owner = this;
+
+            //新着バルーン通知のチェック状態設定
+            NewPostPopMenuItem.Checked = _cfgCommon.NewAllPop;
+            this.NotifyFileMenuItem.Checked = NewPostPopMenuItem.Checked;
+
+            //新着取得時のリストスクロールをするか。trueならスクロールしない
+            ListLockMenuItem.Checked = _cfgCommon.ListLock;
+            this.LockListFileMenuItem.Checked = _cfgCommon.ListLock;
+            //サウンド再生（タブ別設定より優先）
+            this.PlaySoundMenuItem.Checked = this._cfgCommon.PlaySound;
+            this.PlaySoundFileMenuItem.Checked = this._cfgCommon.PlaySound;
+
+            this.IdeographicSpaceToSpaceToolStripMenuItem.Checked = _cfgCommon.WideSpaceConvert;
+            this.ToolStripFocusLockMenuItem.Checked = _cfgCommon.FocusLockToStatusText;
 
             //ウィンドウ設定
             this.ClientSize = ScaleBy(configScaleFactor, _cfgLocal.FormSize);
@@ -951,29 +918,27 @@ namespace OpenTween
                 UnreadStripMenuItem.Enabled = false;
             }
 
-            if (this._cfgCommon.IsUseNotifyGrowl)
-                gh.RegisterGrowl();
+            //発言詳細部の初期化
+            NameLabel.Text = "";
+            DateTimeLabel.Text = "";
+            SourceLinkLabel.Text = "";
 
-            //タイマー設定
-            TimerTimeline.AutoReset = true;
-            TimerTimeline.SynchronizingObject = this;
-            //Recent取得間隔
-            TimerTimeline.Interval = 1000;
-            TimerTimeline.Enabled = true;
-
-            //更新中アイコンアニメーション間隔
-            TimerRefreshIcon.Interval = 200;
-            TimerRefreshIcon.Enabled = true;
-
+            //リンク先URL表示部の初期化（画面左下）
+            StatusLabelUrl.Text = "";
             //状態表示部の初期化（画面右下）
             StatusLabel.Text = "";
             StatusLabel.AutoToolTip = false;
             StatusLabel.ToolTipText = "";
             //文字カウンタ初期化
-            lblLen.Text = GetRestStatusCount(true, false).ToString();
+            lblLen.Text = this.GetRestStatusCount(this.FormatStatusText("")).ToString();
+
+            this.JumpReadOpMenuItem.ShortcutKeyDisplayString = "Space";
+            CopySTOTMenuItem.ShortcutKeyDisplayString = "Ctrl+C";
+            CopyURLMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
+            CopyUserIdStripMenuItem.ShortcutKeyDisplayString = "Shift+Alt+C";
 
             ////////////////////////////////////////////////////////////////////////////////
-            _statuses.SortOrder = (SortOrder)_cfgCommon.SortOrder;
+            var sortOrder = (SortOrder)_cfgCommon.SortOrder;
             var mode = ComparerMode.Id;
             switch (_cfgCommon.SortColumn)
             {
@@ -999,18 +964,15 @@ namespace OpenTween
                     mode = ComparerMode.Source;
                     break;
             }
-            _statuses.SortMode = mode;
+            _statuses.SetSortMode(mode, sortOrder);
             ////////////////////////////////////////////////////////////////////////////////
 
             ApplyListViewIconSize(this._cfgCommon.IconSize);
 
-            StatusLabel.Text = Properties.Resources.Form1_LoadText1;       //画面右下の状態表示を変更
-            StatusLabelUrl.Text = "";            //画面左下のリンク先URL表示部を初期化
-            NameLabel.Text = "";                 //発言詳細部名前ラベル初期化
-            DateTimeLabel.Text = "";             //発言詳細部日時ラベル初期化
-            SourceLinkLabel.Text = "";           //Source部分初期化
-
             //<<<<<<<<タブ関連>>>>>>>
+            // タブの位置を調整する
+            SetTabAlignment();
+
             //デフォルトタブの存在チェック、ない場合には追加
             if (_statuses.GetTabByType(MyCommon.TabUsageType.Home) == null)
             {
@@ -1060,8 +1022,25 @@ namespace OpenTween
                     tab.TabType = MyCommon.TabUsageType.Favorites;
                 }
             }
+            if (_statuses.GetTabByType(MyCommon.TabUsageType.Mute) == null)
+            {
+                TabClass tab;
+                if (!_statuses.Tabs.TryGetValue(MyCommon.DEFAULTTAB.MUTE, out tab))
+                {
+                    _statuses.AddTab(MyCommon.DEFAULTTAB.MUTE, MyCommon.TabUsageType.Mute, null);
+                }
+                else
+                {
+                    tab.TabType = MyCommon.TabUsageType.Mute;
+                }
+            }
+
             foreach (var tab in _statuses.Tabs.Values)
             {
+                // ミュートタブは表示しない
+                if (tab.TabType == MyCommon.TabUsageType.Mute)
+                    continue;
+
                 if (tab.TabType == MyCommon.TabUsageType.Undefined)
                 {
                     tab.TabType = MyCommon.TabUsageType.UserDefined;
@@ -1070,20 +1049,9 @@ namespace OpenTween
                     throw new TabException(Properties.Resources.TweenMain_LoadText1);
             }
 
-            this.JumpReadOpMenuItem.ShortcutKeyDisplayString = "Space";
-            CopySTOTMenuItem.ShortcutKeyDisplayString = "Ctrl+C";
-            CopyURLMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
-            CopyUserIdStripMenuItem.ShortcutKeyDisplayString = "Shift+Alt+C";
-
-            if (!this._cfgCommon.MinimizeToTray || this.WindowState != FormWindowState.Minimized)
-            {
-                this.Visible = true;
-            }
             _curTab = ListTab.SelectedTab;
             _curItemIndex = -1;
             _curList = (DetailsListView)_curTab.Tag;
-            SetMainWindowTitle();
-            SetNotifyIconText();
 
             if (this._cfgCommon.TabIconDisp)
             {
@@ -1096,12 +1064,48 @@ namespace OpenTween
                 ListTab.ImageList = null;
             }
 
+            if (this._cfgCommon.HotkeyEnabled)
+            {
+                //////グローバルホットキーの登録
+                HookGlobalHotkey.ModKeys modKey = HookGlobalHotkey.ModKeys.None;
+                if ((this._cfgCommon.HotkeyModifier & Keys.Alt) == Keys.Alt)
+                    modKey |= HookGlobalHotkey.ModKeys.Alt;
+                if ((this._cfgCommon.HotkeyModifier & Keys.Control) == Keys.Control)
+                    modKey |= HookGlobalHotkey.ModKeys.Ctrl;
+                if ((this._cfgCommon.HotkeyModifier & Keys.Shift) == Keys.Shift)
+                    modKey |= HookGlobalHotkey.ModKeys.Shift;
+                if ((this._cfgCommon.HotkeyModifier & Keys.LWin) == Keys.LWin)
+                    modKey |= HookGlobalHotkey.ModKeys.Win;
+
+                _hookGlobalHotkey.RegisterOriginalHotkey(this._cfgCommon.HotkeyKey, this._cfgCommon.HotkeyValue, modKey);
+            }
+
+            if (this._cfgCommon.IsUseNotifyGrowl)
+                gh.RegisterGrowl();
+
+            StatusLabel.Text = Properties.Resources.Form1_LoadText1;       //画面右下の状態表示を変更
+
+            SetMainWindowTitle();
+            SetNotifyIconText();
+
+            if (!this._cfgCommon.MinimizeToTray || this.WindowState != FormWindowState.Minimized)
+            {
+                this.Visible = true;
+            }
+
+            //タイマー設定
+            TimerTimeline.AutoReset = true;
+            TimerTimeline.SynchronizingObject = this;
+            //Recent取得間隔
+            TimerTimeline.Interval = 1000;
+            TimerTimeline.Enabled = true;
+            //更新中アイコンアニメーション間隔
+            TimerRefreshIcon.Interval = 200;
+            TimerRefreshIcon.Enabled = true;
+
             _ignoreConfigSave = false;
             this.TweenMain_Resize(null, null);
             if (saveRequired) SaveConfigsAll(false);
-
-            if (tw.UserId == 0)
-                tw.VerifyCredentials();
 
             foreach (var ua in this._cfgCommon.UserAccounts)
             {
@@ -1117,9 +1121,6 @@ namespace OpenTween
                 // 初回起動時だけ右下のメニューを目立たせる
                 HashStripSplitButton.ShowDropDown();
             }
-
-            // タブの位置を調整する
-            SetTabAlignment();
         }
 
         private void InitDetailHtmlFormat()
@@ -1300,7 +1301,11 @@ namespace OpenTween
             if (ResetTimers.UserStream || usCounter <= 0 && this._cfgCommon.UserstreamPeriod > 0)
             {
                 Interlocked.Exchange(ref usCounter, this._cfgCommon.UserstreamPeriod);
-                if (this._isActiveUserstream) RefreshTimeline(true);
+                if (this._isActiveUserstream)
+                {
+                    refreshTasks.Add(this.RefreshTasktrayIcon(true));
+                    this.RefreshTimeline(true);
+                }
                 ResetTimers.UserStream = false;
             }
             if (refreshFollowers > 6 * 3600)
@@ -1339,7 +1344,6 @@ namespace OpenTween
 
         private void RefreshTimeline(bool isUserStream)
         {
-            if (isUserStream) this.RefreshTasktrayIcon(true);
             //スクロール制御準備
             int smode = -1;    //-1:制御しない,-2:最新へ,その他:topitem使用
             long topId = GetScrollPos(ref smode);
@@ -1354,12 +1358,12 @@ namespace OpenTween
             int dmCount = _statuses.GetTabByType(MyCommon.TabUsageType.DirectMessage).AllCount;
 
             //更新確定
-            PostClass[] notifyPosts = null;
-            string soundFile = "";
-            int addCount = 0;
-            bool isMention = false;
-            bool isDelete = false;
-            addCount = _statuses.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMention, ref isDelete, isUserStream);
+            PostClass[] notifyPosts;
+            string soundFile;
+            int addCount;
+            bool isMention;
+            bool isDelete;
+            addCount = _statuses.SubmitUpdate(out soundFile, out notifyPosts, out isMention, out isDelete, isUserStream);
 
             if (MyCommon._endingFlag) return;
 
@@ -1431,11 +1435,9 @@ namespace OpenTween
                                 break;
                             default:
                                 //表示位置キープ
-                                if (_curList.VirtualListSize > 0 && _statuses.Tabs[_curTab.Text].IndexOf(topId) > -1)
-                                {
-                                    _curList.EnsureVisible(_curList.VirtualListSize - 1);
-                                    _curList.EnsureVisible(_statuses.Tabs[_curTab.Text].IndexOf(topId));
-                                }
+                                var topIndex = _statuses.Tabs[_curTab.Text].IndexOf(topId);
+                                if (_curList.VirtualListSize > 0 && topIndex > -1)
+                                    this._curList.TopItem = _curList.Items[topIndex];
                                 break;
                         }
                     }
@@ -2006,7 +2008,7 @@ namespace OpenTween
             {
                 if (!ImageSelector.Enabled)
                 {
-                    this.DoRefresh();
+                    await this.DoRefresh();
                     return;
                 }
             }
@@ -2028,7 +2030,9 @@ namespace OpenTween
                 }
             }
 
-            _history[_history.Count - 1] = new PostingStatus(StatusText.Text, _reply_to_id, _reply_to_name);
+            var inReplyToStatusId = this.inReplyTo?.Item1;
+            var inReplyToScreenName = this.inReplyTo?.Item2;
+            _history[_history.Count - 1] = new PostingStatus(StatusText.Text, inReplyToStatusId, inReplyToScreenName);
 
             if (this._cfgCommon.Nicoms)
             {
@@ -2048,153 +2052,29 @@ namespace OpenTween
             StatusText.SelectionStart = StatusText.Text.Length;
             CheckReplyTo(StatusText.Text);
 
-            //整形によって増加する文字数を取得
-            int adjustCount = 0;
-            string tmpStatus = StatusText.Text.Trim();
-            if (ToolStripMenuItemApiCommandEvasion.Checked)
-            {
-                // APIコマンド回避
-                if (Regex.IsMatch(tmpStatus,
-                    @"^[+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]*(get|g|fav|follow|f|on|off|stop|quit|leave|l|whois|w|nudge|n|stats|invite|track|untrack|tracks|tracking|\*)([+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]+|$)",
-                    RegexOptions.IgnoreCase)
-                   && tmpStatus.EndsWith(" .") == false) adjustCount += 2;
-            }
+            var statusText = this.FormatStatusText(this.StatusText.Text);
 
-            if (ToolStripMenuItemUrlMultibyteSplit.Checked)
+            if (this.GetRestStatusCount(statusText) < 0)
             {
-                // URLと全角文字の切り離し
-                adjustCount += Regex.Matches(tmpStatus, @"https?:\/\/[-_.!~*'()a-zA-Z0-9;\/?:\@&=+\$,%#^]+").Count;
-            }
-
-            bool isCutOff = false;
-            bool isRemoveFooter = MyCommon.IsKeyDown(Keys.Shift);
-            if (StatusText.Multiline && !this._cfgCommon.PostCtrlEnter)
-            {
-                //複数行でEnter投稿の場合、Ctrlも押されていたらフッタ付加しない
-                isRemoveFooter = MyCommon.IsKeyDown(Keys.Control);
-            }
-            if (this._cfgCommon.PostShiftEnter)
-            {
-                isRemoveFooter = MyCommon.IsKeyDown(Keys.Control);
-            }
-            if (!isRemoveFooter && (StatusText.Text.Contains("RT @") || StatusText.Text.Contains("QT @")))
-            {
-                isRemoveFooter = true;
-            }
-            if (GetRestStatusCount(false, !isRemoveFooter) - adjustCount < 0)
-            {
-                if (MessageBox.Show(Properties.Resources.PostLengthOverMessage1, Properties.Resources.PostLengthOverMessage2, MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
-                {
-                    isCutOff = true;
-                    //if (!SettingDialog.UrlConvertAuto) UrlConvertAutoToolStripMenuItem_Click(null, null);
-                    if (GetRestStatusCount(false, !isRemoveFooter) - adjustCount < 0)
-                    {
-                        isRemoveFooter = true;
-                    }
-                }
-                else
-                {
+                // 文字数制限を超えているが強制的に投稿するか
+                var ret = MessageBox.Show(Properties.Resources.PostLengthOverMessage1, Properties.Resources.PostLengthOverMessage2, MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                if (ret != DialogResult.OK)
                     return;
-                }
-            }
-
-            string footer = "";
-            string header = "";
-            if (StatusText.Text.StartsWith("D ") || StatusText.Text.StartsWith("d "))
-            {
-                //DM時は何もつけない
-                footer = "";
-            }
-            else
-            {
-                //ハッシュタグ
-                if (HashMgr.IsNotAddToAtReply)
-                {
-                    if (!string.IsNullOrEmpty(HashMgr.UseHash) && _reply_to_id == null && string.IsNullOrEmpty(_reply_to_name))
-                    {
-                        if (HashMgr.IsHead)
-                            header = HashMgr.UseHash + " ";
-                        else
-                            footer = " " + HashMgr.UseHash;
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(HashMgr.UseHash))
-                    {
-                        if (HashMgr.IsHead)
-                            header = HashMgr.UseHash + " ";
-                        else
-                            footer = " " + HashMgr.UseHash;
-                    }
-                }
-                if (!isRemoveFooter)
-                {
-                    if (this._cfgLocal.UseRecommendStatus)
-                    {
-                        // 推奨ステータスを使用する
-                        footer += this.recommendedStatusFooter;
-                    }
-                    else if (!string.IsNullOrEmpty(this._cfgLocal.StatusText))
-                    {
-                        // テキストボックスに入力されている文字列を使用する
-                        footer += " " + this._cfgLocal.StatusText.Trim();
-                    }
-                }
             }
 
             var status = new PostingStatus();
-            status.status = header + StatusText.Text + footer;
+            status.status = statusText;
 
-            if (ToolStripMenuItemApiCommandEvasion.Checked)
-            {
-                // APIコマンド回避
-                if (Regex.IsMatch(status.status,
-                    @"^[+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]*(get|g|fav|follow|f|on|off|stop|quit|leave|l|whois|w|nudge|n|stats|invite|track|untrack|tracks|tracking|\*)([+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]+|$)",
-                    RegexOptions.IgnoreCase)
-                   && status.status.EndsWith(" .") == false) status.status += " .";
-            }
-
-            if (ToolStripMenuItemUrlMultibyteSplit.Checked)
-            {
-                // URLと全角文字の切り離し
-                Match mc2 = Regex.Match(status.status, @"https?:\/\/[-_.!~*'()a-zA-Z0-9;\/?:\@&=+\$,%#^]+");
-                if (mc2.Success) status.status = Regex.Replace(status.status, @"https?:\/\/[-_.!~*'()a-zA-Z0-9;\/?:\@&=+\$,%#^]+", "$& ");
-            }
-
-            if (IdeographicSpaceToSpaceToolStripMenuItem.Checked)
-            {
-                // 文中の全角スペースを半角スペース1個にする
-                status.status = status.status.Replace("　", " ");
-            }
-
-            if (isCutOff && status.status.Length > 140)
-            {
-                status.status = status.status.Substring(0, 140);
-                string AtId = @"(@|＠)[a-z0-9_/]+$";
-                string HashTag = @"(^|[^0-9A-Z&\/\?]+)(#|＃)([0-9A-Z_]*[A-Z_]+)$";
-                string Url = @"https?:\/\/[a-z0-9!\*'\(\);:&=\+\$\/%#\[\]\-_\.,~?]+$"; //簡易判定
-                string pattern = string.Format("({0})|({1})|({2})", AtId, HashTag, Url);
-                Match mc = Regex.Match(status.status, pattern, RegexOptions.IgnoreCase);
-                if (mc.Success)
-                {
-                    //さらに@ID、ハッシュタグ、URLと推測される文字列をカットする
-                    status.status = status.status.Substring(0, 140 - mc.Value.Length);
-                }
-                if (MessageBox.Show(status.status, "Post or Cancel?", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.Cancel) return;
-            }
-
-            status.inReplyToId = _reply_to_id;
-            status.inReplyToName = _reply_to_name;
+            status.inReplyToId = this.inReplyTo?.Item1;
+            status.inReplyToName = this.inReplyTo?.Item2;
             if (ImageSelector.Visible)
             {
                 //画像投稿
-                if (!ImageSelector.TryGetSelectedMedia(out status.imageService, out status.imagePath))
+                if (!ImageSelector.TryGetSelectedMedia(out status.imageService, out status.mediaItems))
                     return;
             }
 
-            _reply_to_id = null;
-            _reply_to_name = null;
+            this.inReplyTo = null;
             StatusText.Text = "";
             _history.Add(new PostingStatus());
             _hisIdx = _history.Count - 1;
@@ -2207,7 +2087,7 @@ namespace OpenTween
             if (StatusText.Text.StartsWith("Google:", StringComparison.OrdinalIgnoreCase) && StatusText.Text.Trim().Length > 7)
             {
                 string tmp = string.Format(Properties.Resources.SearchItem2Url, Uri.EscapeDataString(StatusText.Text.Substring(7)));
-                await this.OpenUriAsync(tmp);
+                await this.OpenUriInBrowserAsync(tmp);
             }
 
             await this.PostMessageAsync(status);
@@ -2313,10 +2193,7 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var err = this.tw.GetTimelineApi(read, MyCommon.WORKERTYPE.Timeline, loadMore, this._initial);
-
-                if (!string.IsNullOrEmpty(err))
-                    throw new WebApiException(err);
+                this.tw.GetTimelineApi(read, MyCommon.WORKERTYPE.Timeline, loadMore, this._initial);
 
                 // 新着時未読クリア
                 if (this._cfgCommon.ReadOldPosts)
@@ -2406,10 +2283,7 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var err = this.tw.GetTimelineApi(read, MyCommon.WORKERTYPE.Reply, loadMore, this._initial);
-
-                if (!string.IsNullOrEmpty(err))
-                    throw new WebApiException(err);
+                this.tw.GetTimelineApi(read, MyCommon.WORKERTYPE.Reply, loadMore, this._initial);
 
                 this._statuses.DistributePosts();
             });
@@ -2468,13 +2342,8 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var err = this.tw.GetDirectMessageApi(read, MyCommon.WORKERTYPE.DirectMessegeRcv, loadMore);
-                if (!string.IsNullOrEmpty(err))
-                    throw new WebApiException(err);
-
-                var err2 = this.tw.GetDirectMessageApi(read, MyCommon.WORKERTYPE.DirectMessegeSnt, loadMore);
-                if (!string.IsNullOrEmpty(err2))
-                    throw new WebApiException(err2);
+                this.tw.GetDirectMessageApi(read, MyCommon.WORKERTYPE.DirectMessegeRcv, loadMore);
+                this.tw.GetDirectMessageApi(read, MyCommon.WORKERTYPE.DirectMessegeSnt, loadMore);
 
                 this._statuses.DistributePosts();
             });
@@ -2531,10 +2400,7 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var err = this.tw.GetFavoritesApi(read, MyCommon.WORKERTYPE.Favorites, loadMore);
-
-                if (!string.IsNullOrEmpty(err))
-                    throw new WebApiException(err);
+                this.tw.GetFavoritesApi(read, loadMore);
 
                 this._statuses.DistributePosts();
             });
@@ -2600,24 +2466,30 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
+                WebApiException lastException = null;
+
                 foreach (var tab in tabs)
                 {
-                    if (string.IsNullOrEmpty(tab.SearchWords))
-                        continue;
-
-                    var err = this.tw.GetSearch(read, tab, false);
-                    if (!string.IsNullOrEmpty(err))
-                        throw new WebApiException(err);
-
-                    if (loadMore)
+                    try
                     {
-                        var err2 = this.tw.GetSearch(read, tab, true);
-                        if (!string.IsNullOrEmpty(err2))
-                            throw new WebApiException(err2);
+                        if (string.IsNullOrEmpty(tab.SearchWords))
+                            continue;
+
+                        this.tw.GetSearch(read, tab, false);
+
+                        if (loadMore)
+                            this.tw.GetSearch(read, tab, true);
+                    }
+                    catch (WebApiException ex)
+                    {
+                        lastException = ex;
                     }
                 }
 
                 this._statuses.DistributePosts();
+
+                if (lastException != null)
+                    throw new WebApiException(lastException.Message, lastException);
             });
 
             if (ct.IsCancellationRequested)
@@ -2681,21 +2553,27 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var count = 20;
-                if (this._cfgCommon.UseAdditionalCount)
-                    count = this._cfgCommon.UserTimelineCountApi;
+                WebApiException lastException = null;
 
                 foreach (var tab in tabs)
                 {
-                    if (string.IsNullOrEmpty(tab.User))
-                        continue;
+                    try
+                    {
+                        if (string.IsNullOrEmpty(tab.User))
+                            continue;
 
-                    var err = this.tw.GetUserTimelineApi(read, count, tab.User, tab, loadMore);
-                    if (!string.IsNullOrEmpty(err))
-                        throw new WebApiException(err);
+                        this.tw.GetUserTimelineApi(read, tab.User, tab, loadMore);
+                    }
+                    catch (WebApiException ex)
+                    {
+                        lastException = ex;
+                    }
                 }
 
                 this._statuses.DistributePosts();
+
+                if (lastException != null)
+                    throw new WebApiException(lastException.Message, lastException);
             });
 
             if (ct.IsCancellationRequested)
@@ -2759,17 +2637,27 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
+                WebApiException lastException = null;
+
                 foreach (var tab in tabs)
                 {
-                    if (tab.ListInfo == null || tab.ListInfo.Id == 0)
-                        continue;
+                    try
+                    {
+                        if (tab.ListInfo == null || tab.ListInfo.Id == 0)
+                            continue;
 
-                    var err = this.tw.GetListStatus(read, tab, loadMore, this._initial);
-                    if (!string.IsNullOrEmpty(err))
-                        throw new WebApiException(err);
+                        this.tw.GetListStatus(read, tab, loadMore, this._initial);
+                    }
+                    catch (WebApiException ex)
+                    {
+                        lastException = ex;
+                    }
                 }
 
                 this._statuses.DistributePosts();
+
+                if (lastException != null)
+                    throw new WebApiException(lastException.Message, lastException);
             });
 
             if (ct.IsCancellationRequested)
@@ -2819,9 +2707,7 @@ namespace OpenTween
 
             await Task.Run(() =>
             {
-                var err = this.tw.GetRelatedResult(read, tab);
-                if (!string.IsNullOrEmpty(err))
-                    throw new WebApiException(err);
+                this.tw.GetRelatedResult(read, tab);
 
                 this._statuses.DistributePosts();
             });
@@ -2902,9 +2788,11 @@ namespace OpenTween
                     if (post.IsFav)
                         continue;
 
-                    var err = this.tw.PostFavAdd(post.RetweetedId ?? post.StatusId);
-
-                    if (!string.IsNullOrEmpty(err))
+                    try
+                    {
+                        this.tw.PostFavAdd(post.RetweetedId ?? post.StatusId);
+                    }
+                    catch (WebApiException)
                     {
                         failedCount++;
                         continue;
@@ -2922,7 +2810,7 @@ namespace OpenTween
                         postTl.IsFav = true;
 
                         var favTab = this._statuses.GetTabByType(MyCommon.TabUsageType.Favorites);
-                        favTab.Add(statusId, postTl.IsRead, false);
+                        favTab.AddPostImmediately(statusId, postTl.IsRead);
                     }
 
                     // 検索,リスト,UserTimeline,Relatedの各タブに反映
@@ -2965,7 +2853,7 @@ namespace OpenTween
                 }
 
                 if (successIds.Contains(this._curPost.StatusId))
-                    this.DispSelectedPost(true); // 選択アイテム再表示
+                    await this.DispSelectedPost(true); // 選択アイテム再表示
             }
         }
 
@@ -3019,9 +2907,11 @@ namespace OpenTween
                     if (!post.IsFav)
                         continue;
 
-                    var err = this.tw.PostFavRemove(post.RetweetedId ?? post.StatusId);
-
-                    if (!string.IsNullOrEmpty(err))
+                    try
+                    {
+                        this.tw.PostFavRemove(post.RetweetedId ?? post.StatusId);
+                    }
+                    catch (WebApiException)
                     {
                         failedCount++;
                         continue;
@@ -3073,7 +2963,7 @@ namespace OpenTween
                     }
 
                     if (successIds.Contains(this._curPost.StatusId))
-                        this.DispSelectedPost(true); // 選択アイテム再表示
+                        await this.DispSelectedPost(true); // 選択アイテム再表示
                 }
             }
         }
@@ -3115,16 +3005,14 @@ namespace OpenTween
             {
                 await Task.Run(async () =>
                 {
-                    if (status.imagePath == null || status.imagePath.Length == 0 || string.IsNullOrEmpty(status.imagePath[0]))
+                    if (status.mediaItems == null || status.mediaItems.Length == 0)
                     {
-                        var err = this.tw.PostStatus(status.status, status.inReplyToId);
-                        if (!string.IsNullOrEmpty(err))
-                            throw new WebApiException(err);
+                        this.tw.PostStatus(status.status, status.inReplyToId);
                     }
                     else
                     {
                         var service = ImageSelector.GetService(status.imageService);
-                        await service.PostStatusAsync(status.status, status.inReplyToId, status.imagePath)
+                        await service.PostStatusAsync(status.status, status.inReplyToId, status.mediaItems)
                             .ConfigureAwait(false);
                     }
                 });
@@ -3137,6 +3025,17 @@ namespace OpenTween
                 errMsg = ex.Message;
                 p.Report(errMsg);
                 this._myStatusError = true;
+            }
+            finally
+            {
+                // 使い終わった MediaItem は破棄する
+                if (status.mediaItems != null)
+                {
+                    foreach (var disposableItem in status.mediaItems.OfType<IDisposable>())
+                    {
+                        disposableItem.Dispose();
+                    }
+                }
             }
 
             if (ct.IsCancellationRequested)
@@ -3239,9 +3138,7 @@ namespace OpenTween
             {
                 foreach (var statusId in statusIds)
                 {
-                    var err = this.tw.PostRetweet(statusId, read);
-                    if (!string.IsNullOrEmpty(err))
-                        throw new WebApiException(err);
+                    this.tw.PostRetweet(statusId, read);
                 }
             });
 
@@ -3276,8 +3173,7 @@ namespace OpenTween
 
                 this.RefreshTimeline(false);
                 this.PurgeListViewItemCache();
-                if (this._curList != null)
-                    this._curList.Refresh();
+                this._curList?.Refresh();
             }
             catch (WebApiException ex)
             {
@@ -3346,8 +3242,7 @@ namespace OpenTween
 
                 this.PurgeListViewItemCache();
 
-                if (this._curList != null)
-                    this._curList.Refresh();
+                this._curList?.Refresh();
             }
             catch (WebApiException ex)
             {
@@ -3383,12 +3278,7 @@ namespace OpenTween
             int fidx = 0;
             if (_curTab.Text.Equals(favTabName))
             {
-                if (_curList.FocusedItem != null)
-                    fidx = _curList.FocusedItem.Index;
-                else if (_curList.TopItem != null)
-                    fidx = _curList.TopItem.Index;
-                else
-                    fidx = 0;
+                fidx = _curList.FocusedItem?.Index ?? _curList.TopItem?.Index ?? 0;
             }
 
             foreach (long i in ids)
@@ -3469,7 +3359,7 @@ namespace OpenTween
                     break;
                 case 2:
                     if (_curPost != null)
-                        ShowUserStatus(_curPost.ScreenName, false);
+                        await this.ShowUserStatus(_curPost.ScreenName, false);
                     break;
                 case 3:
                     ShowUserTimeline();
@@ -3502,7 +3392,7 @@ namespace OpenTween
 
         private async void FavoriteRetweetMenuItem_Click(object sender, EventArgs e)
         {
-            await this.FavoritesRetweetOriginal();
+            await this.FavoritesRetweetOfficial();
         }
 
         private async void FavoriteRetweetUnofficialMenuItem_Click(object sender, EventArgs e)
@@ -3520,10 +3410,14 @@ namespace OpenTween
             if (tab.TabType == MyCommon.TabUsageType.DirectMessage || _curList.SelectedIndices.Count == 0
                 || !this.ExistCurrentPost) return;
 
+            // 誤ふぁぼ・故意によるふぁぼ爆対策 (変更しないこと)
+            // https://support.twitter.com/articles/76915#favoriting
+            const int MultiSelectFavLimit = 1;
+
             //複数fav確認msg
-            if (_curList.SelectedIndices.Count > 250 && FavAdd)
+            if (_curList.SelectedIndices.Count > MultiSelectFavLimit && FavAdd)
             {
-                MessageBox.Show(Properties.Resources.FavoriteLimitCountText);
+                MessageBox.Show(string.Format(Properties.Resources.FavoriteLimitCountText, MultiSelectFavLimit));
                 _DoFavRetweetFlags = false;
                 return;
             }
@@ -3595,18 +3489,18 @@ namespace OpenTween
         }
 
 
-        private void MoveToHomeToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void MoveToHomeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (_curList.SelectedIndices.Count > 0)
-                OpenUriAsync(MyCommon.TwitterUrl + GetCurTabPost(_curList.SelectedIndices[0]).ScreenName);
+                await this.OpenUriInBrowserAsync(MyCommon.TwitterUrl + GetCurTabPost(_curList.SelectedIndices[0]).ScreenName);
             else if (_curList.SelectedIndices.Count == 0)
-                OpenUriAsync(MyCommon.TwitterUrl);
+                await this.OpenUriInBrowserAsync(MyCommon.TwitterUrl);
         }
 
-        private void MoveToFavToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void MoveToFavToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (_curList.SelectedIndices.Count > 0)
-                OpenUriAsync(MyCommon.TwitterUrl + "#!/" + GetCurTabPost(_curList.SelectedIndices[0]).ScreenName + "/favorites");
+                await this.OpenUriInBrowserAsync(MyCommon.TwitterUrl + "#!/" + GetCurTabPost(_curList.SelectedIndices[0]).ScreenName + "/favorites");
         }
 
         private void TweenMain_ClientSizeChanged(object sender, EventArgs e)
@@ -3626,69 +3520,119 @@ namespace OpenTween
 
         private void MyList_ColumnClick(object sender, ColumnClickEventArgs e)
         {
-            if (this._cfgCommon.SortOrderLock) return;
-            var mode = ComparerMode.Id;
-            if (_iconCol)
-            {
-                mode = ComparerMode.Id;
-            }
-            else
-            {
-                switch (e.Column)
-                {
-                    case 0:
-                    case 5:
-                    case 6:    //0:アイコン,5:未読マーク,6:プロテクト・フィルターマーク
-                        //ソートしない
-                        return;
-                    case 1:  //ニックネーム
-                        mode = ComparerMode.Nickname;
-                        break;
-                    case 2:  //本文
-                        mode = ComparerMode.Data;
-                        break;
-                    case 3:  //時刻=発言Id
-                        mode = ComparerMode.Id;
-                        break;
-                    case 4:  //名前
-                        mode = ComparerMode.Name;
-                        break;
-                    case 7:  //Source
-                        mode = ComparerMode.Source;
-                        break;
-                }
-            }
-            _statuses.ToggleSortOrder(mode);
-            InitColumnText();
+            var comparerMode = this.GetComparerModeByColumnIndex(e.Column);
+            if (comparerMode == null)
+                return;
 
-            DetailsListView list = (DetailsListView)sender;
+            this.SetSortColumn(comparerMode.Value);
+        }
+
+        /// <summary>
+        /// 列インデックスからソートを行う ComparerMode を求める
+        /// </summary>
+        /// <param name="columnIndex">ソートを行うカラムのインデックス (表示上の順序とは異なる)</param>
+        /// <returns>ソートを行う ComparerMode。null であればソートを行わない</returns>
+        private ComparerMode? GetComparerModeByColumnIndex(int columnIndex)
+        {
+            if (this._iconCol)
+                return ComparerMode.Id;
+
+            switch (columnIndex)
+            {
+                case 1: // ニックネーム
+                    return ComparerMode.Nickname;
+                case 2: // 本文
+                    return ComparerMode.Data;
+                case 3: // 時刻=発言Id
+                    return ComparerMode.Id;
+                case 4: // 名前
+                    return ComparerMode.Name;
+                case 7: // Source
+                    return ComparerMode.Source;
+                default:
+                    // 0:アイコン, 5:未読マーク, 6:プロテクト・フィルターマーク
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// 発言一覧の指定した位置の列でソートする
+        /// </summary>
+        /// <param name="columnIndex">ソートする列の位置 (表示上の順序で指定)</param>
+        private void SetSortColumnByDisplayIndex(int columnIndex)
+        {
+            // 表示上の列の位置から ColumnHeader を求める
+            var col = this._curList.Columns.Cast<ColumnHeader>()
+                .Where(x => x.DisplayIndex == columnIndex)
+                .FirstOrDefault();
+
+            if (col == null)
+                return;
+
+            var comparerMode = this.GetComparerModeByColumnIndex(col.Index);
+            if (comparerMode == null)
+                return;
+
+            this.SetSortColumn(comparerMode.Value);
+        }
+
+        /// <summary>
+        /// 発言一覧の最後列の項目でソートする
+        /// </summary>
+        private void SetSortLastColumn()
+        {
+            // 表示上の最後列にある ColumnHeader を求める
+            var col = this._curList.Columns.Cast<ColumnHeader>()
+                .OrderByDescending(x => x.DisplayIndex)
+                .First();
+
+            var comparerMode = this.GetComparerModeByColumnIndex(col.Index);
+            if (comparerMode == null)
+                return;
+
+            this.SetSortColumn(comparerMode.Value);
+        }
+
+        /// <summary>
+        /// 発言一覧を指定された ComparerMode に基づいてソートする
+        /// </summary>
+        private void SetSortColumn(ComparerMode sortColumn)
+        {
+            if (this._cfgCommon.SortOrderLock)
+                return;
+
+            this._statuses.ToggleSortOrder(sortColumn);
+            this.InitColumnText();
+
+            var list = this._curList;
             if (_iconCol)
             {
-                list.Columns[0].Text = ColumnOrgText[0];
-                list.Columns[1].Text = ColumnText[2];
+                list.Columns[0].Text = this.ColumnText[0];
+                list.Columns[1].Text = this.ColumnText[2];
             }
             else
             {
-                for (int i = 0; i <= 7; i++)
+                for (var i = 0; i <= 7; i++)
                 {
-                    list.Columns[i].Text = ColumnOrgText[i];
+                    list.Columns[i].Text = this.ColumnText[i];
                 }
-                list.Columns[e.Column].Text = ColumnText[e.Column];
             }
 
             this.PurgeListViewItemCache();
 
-            if (_statuses.Tabs[_curTab.Text].AllCount > 0 && _curPost != null)
+            var tab = this._statuses.Tabs[this._curTab.Text];
+            if (tab.AllCount > 0 && this._curPost != null)
             {
-                int idx = _statuses.Tabs[_curTab.Text].IndexOf(_curPost.StatusId);
+                var idx = tab.IndexOf(this._curPost.StatusId);
                 if (idx > -1)
                 {
-                    SelectListItem(_curList, idx);
-                    _curList.EnsureVisible(idx);
+                    this.SelectListItem(list, idx);
+                    list.EnsureVisible(idx);
                 }
             }
-            _curList.Refresh();
-            _modifySettingCommon = true;
+            list.Refresh();
+
+            this._modifySettingCommon = true;
         }
 
         private void TweenMain_LocationChanged(object sender, EventArgs e)
@@ -3743,7 +3687,7 @@ namespace OpenTween
                 ShowRelatedStatusesMenuItem.Enabled = false;
 
                 ReTweetStripMenuItem.Enabled = false;
-                ReTweetOriginalStripMenuItem.Enabled = false;
+                ReTweetUnofficialStripMenuItem.Enabled = false;
                 QuoteStripMenuItem.Enabled = false;
                 FavoriteRetweetContextMenu.Enabled = false;
                 FavoriteRetweetUnofficialContextMenu.Enabled = false;
@@ -3758,23 +3702,26 @@ namespace OpenTween
 
                 if (_curPost.IsMe)
                 {
-                    ReTweetOriginalStripMenuItem.Enabled = false;
-                    FavoriteRetweetContextMenu.Enabled = false;
+                    ReTweetStripMenuItem.Enabled = false;  //公式RTは無効に
+                    ReTweetUnofficialStripMenuItem.Enabled = true;
+                    QuoteStripMenuItem.Enabled = true;
+                    FavoriteRetweetContextMenu.Enabled = false;  //公式RTは無効に
+                    FavoriteRetweetUnofficialContextMenu.Enabled = true;
                 }
                 else
                 {
                     if (_curPost.IsProtect)
                     {
-                        ReTweetOriginalStripMenuItem.Enabled = false;
                         ReTweetStripMenuItem.Enabled = false;
+                        ReTweetUnofficialStripMenuItem.Enabled = false;
                         QuoteStripMenuItem.Enabled = false;
                         FavoriteRetweetContextMenu.Enabled = false;
                         FavoriteRetweetUnofficialContextMenu.Enabled = false;
                     }
                     else
                     {
-                        ReTweetOriginalStripMenuItem.Enabled = true;
                         ReTweetStripMenuItem.Enabled = true;
+                        ReTweetUnofficialStripMenuItem.Enabled = true;
                         QuoteStripMenuItem.Enabled = true;
                         FavoriteRetweetContextMenu.Enabled = true;
                         FavoriteRetweetUnofficialContextMenu.Enabled = true;
@@ -3851,47 +3798,42 @@ namespace OpenTween
             if (ret != DialogResult.OK)
                 return;
 
-            int focusedIndex;
-            if (this._curList.FocusedItem != null)
-                focusedIndex = this._curList.FocusedItem.Index;
-            else if (this._curList.TopItem != null)
-                focusedIndex = this._curList.TopItem.Index;
-            else
-                focusedIndex = 0;
+            var focusedIndex = this._curList.FocusedItem?.Index ?? this._curList.TopItem?.Index ?? 0;
 
             using (ControlTransaction.Cursor(this, Cursors.WaitCursor))
             {
-                string lastError = null;
+                Exception lastException = null;
                 foreach (var post in posts)
                 {
                     if (!post.CanDeleteBy(this.tw.UserId))
                         continue;
 
-                    string err;
-                    if (post.IsDm)
+                    try
                     {
-                        err = this.tw.RemoveDirectMessage(post.StatusId, post);
-                    }
-                    else
-                    {
-                        if (post.RetweetedId != null && post.UserId == this.tw.UserId)
-                            // 他人に RT された自分のツイート
-                            err = this.tw.RemoveStatus(post.RetweetedId.Value);
+                        if (post.IsDm)
+                        {
+                            this.tw.RemoveDirectMessage(post.StatusId, post);
+                        }
                         else
-                            // 自分のツイート or 自分が RT したツイート
-                            err = this.tw.RemoveStatus(post.StatusId);
+                        {
+                            if (post.RetweetedId != null && post.UserId == this.tw.UserId)
+                                // 他人に RT された自分のツイート
+                                this.tw.RemoveStatus(post.RetweetedId.Value);
+                            else
+                                // 自分のツイート or 自分が RT したツイート
+                                this.tw.RemoveStatus(post.StatusId);
+                        }
                     }
-
-                    if (!string.IsNullOrEmpty(err))
+                    catch (WebApiException ex)
                     {
-                        lastError = err;
+                        lastException = ex;
                         continue;
                     }
 
                     this._statuses.RemovePost(post.StatusId);
                 }
 
-                if (lastError == null)
+                if (lastException == null)
                     this.StatusLabel.Text = Properties.Resources.DeleteStripMenuItem_ClickText4; // 成功
                 else
                     this.StatusLabel.Text = Properties.Resources.DeleteStripMenuItem_ClickText3; // 失敗
@@ -3995,12 +3937,12 @@ namespace OpenTween
             if (!this._cfgCommon.TabIconDisp) ListTab.Refresh();
         }
 
-        private void RefreshStripMenuItem_Click(object sender, EventArgs e)
+        private async void RefreshStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.DoRefresh();
+            await this.DoRefresh();
         }
 
-        private void DoRefresh()
+        private async Task DoRefresh()
         {
             if (_curTab != null)
             {
@@ -4011,37 +3953,37 @@ namespace OpenTween
                 switch (_statuses.Tabs[_curTab.Text].TabType)
                 {
                     case MyCommon.TabUsageType.Mentions:
-                        this.GetReplyAsync();
+                        await this.GetReplyAsync();
                         break;
                     case MyCommon.TabUsageType.DirectMessage:
-                        this.GetDirectMessagesAsync();
+                        await this.GetDirectMessagesAsync();
                         break;
                     case MyCommon.TabUsageType.Favorites:
-                        this.GetFavoritesAsync();
+                        await this.GetFavoritesAsync();
                         break;
                     //case MyCommon.TabUsageType.Profile:
                         //// TODO
                     case MyCommon.TabUsageType.PublicSearch:
                         //// TODO
                         if (string.IsNullOrEmpty(tab.SearchWords)) return;
-                        this.GetPublicSearchAsync(tab);
+                        await this.GetPublicSearchAsync(tab);
                         break;
                     case MyCommon.TabUsageType.UserTimeline:
-                        this.GetUserTimelineAsync(tab);
+                        await this.GetUserTimelineAsync(tab);
                         break;
                     case MyCommon.TabUsageType.Lists:
                         //// TODO
                         if (tab.ListInfo == null || tab.ListInfo.Id == 0) return;
-                        this.GetListTimelineAsync(tab);
+                        await this.GetListTimelineAsync(tab);
                         break;
                     default:
-                        this.GetHomeTimelineAsync();
+                        await this.GetHomeTimelineAsync();
                         break;
                 }
             }
             else
             {
-                this.GetHomeTimelineAsync();
+                await this.GetHomeTimelineAsync();
             }
         }
 
@@ -4149,6 +4091,7 @@ namespace OpenTween
                     Networking.SetWebProxy(this._cfgLocal.ProxyType,
                         this._cfgLocal.ProxyAddress, this._cfgLocal.ProxyPort,
                         this._cfgLocal.ProxyUser, this._cfgLocal.ProxyPassword);
+                    Networking.ForceIPv4 = this._cfgCommon.ForceIPv4;
 
                     ImageSelector.Reset(tw, this.tw.Configuration);
 
@@ -4324,7 +4267,7 @@ namespace OpenTween
                     SetNotifyIconText();
 
                     this.PurgeListViewItemCache();
-                    if (_curList != null) _curList.Refresh();
+                    _curList?.Refresh();
                     ListTab.Refresh();
 
                     _hookGlobalHotkey.UnregisterAllOriginalHotkey();
@@ -4465,16 +4408,16 @@ namespace OpenTween
             }
         }
 
-        private void PostBrowser_Navigated(object sender, WebBrowserNavigatedEventArgs e)
+        private async void PostBrowser_Navigated(object sender, WebBrowserNavigatedEventArgs e)
         {
             if (e.Url.AbsoluteUri != "about:blank")
             {
-                DispSelectedPost();
-                OpenUriAsync(e.Url.OriginalString);
+                await this.DispSelectedPost();
+                await this.OpenUriInBrowserAsync(e.Url.OriginalString);
             }
         }
 
-        private void PostBrowser_Navigating(object sender, WebBrowserNavigatingEventArgs e)
+        private async void PostBrowser_Navigating(object sender, WebBrowserNavigatingEventArgs e)
         {
             if (e.Url.Scheme == "data")
             {
@@ -4483,47 +4426,8 @@ namespace OpenTween
             else if (e.Url.AbsoluteUri != "about:blank")
             {
                 e.Cancel = true;
-
-                if (e.Url.AbsoluteUri.StartsWith("http://twitter.com/search?q=%23") ||
-                   e.Url.AbsoluteUri.StartsWith("https://twitter.com/search?q=%23"))
-                {
-                    //ハッシュタグの場合は、タブで開く
-                    string urlStr = Uri.UnescapeDataString(e.Url.AbsoluteUri);
-                    int i = urlStr.IndexOf('#');
-                    if (i == -1) return;
-
-                    string hash = urlStr.Substring(i);
-                    HashSupl.AddItem(hash);
-                    HashMgr.AddHashToHistory(hash.Trim(), false);
-                    AddNewTabForSearch(hash);
-                    return;
-                }
-                else
-                {
-                    Match m = Regex.Match(e.Url.AbsoluteUri, "^https?://twitter.com/(#!/)?(?<ScreenName>[a-zA-Z0-9_]+)$");
-                    if (m.Success && IsTwitterId(m.Result("${ScreenName}")))
-                    {
-                        // Ctrlを押しながらリンクをクリックした場合は設定と逆の動作をする
-                        if (this._cfgCommon.OpenUserTimeline)
-                        {
-                            if (MyCommon.IsKeyDown(Keys.Control))
-                                OpenUriAsync(e.Url.OriginalString);
-                            else
-                                this.AddNewTabForUserTimeline(m.Result("${ScreenName}"));
-                        }
-                        else
-                        {
-                            if (MyCommon.IsKeyDown(Keys.Control))
-                                this.AddNewTabForUserTimeline(m.Result("${ScreenName}"));
-                            else
-                                OpenUriAsync(e.Url.OriginalString);
-                        }
-                    }
-                    else
-                    {
-                        OpenUriAsync(e.Url.OriginalString);
-                    }
-                }
+                // Ctrlを押しながらリンクを開いた場合は、設定と逆の動作をするフラグを true としておく
+                await this.OpenUriAsync( e.Url, MyCommon.IsKeyDown( Keys.Control ) );
             }
         }
 
@@ -4643,8 +4547,8 @@ namespace OpenTween
                 }
             }
 
-            TabPage _tabPage = new TabPage();
-            DetailsListView _listCustom = new DetailsListView();
+            var _tabPage = new TabPage();
+            var _listCustom = new DetailsListView();
 
             int cnt = ListTab.TabPages.Count;
 
@@ -4658,11 +4562,12 @@ namespace OpenTween
             using (ControlTransaction.Layout(this))
             using (ControlTransaction.Layout(_tabPage, false))
             {
+                _tabPage.Controls.Add(_listCustom);
+
                 /// UserTimeline関連
-                Label label = null;
                 if (tabType == MyCommon.TabUsageType.UserTimeline || tabType == MyCommon.TabUsageType.Lists)
                 {
-                    label = new Label();
+                    var label = new Label();
                     label.Dock = DockStyle.Top;
                     label.Name = "labelUser";
                     if (tabType == MyCommon.TabUsageType.Lists)
@@ -4680,95 +4585,98 @@ namespace OpenTween
                     }
                     _tabPage.Controls.Add(label);
                 }
-
                 /// 検索関連の準備
-                Panel pnl = null;
-                if (tabType == MyCommon.TabUsageType.PublicSearch)
+                else if (tabType == MyCommon.TabUsageType.PublicSearch)
                 {
-                    pnl = new Panel();
+                    var pnl = new Panel();
 
-                    Label lbl = new Label();
-                    ComboBox cmb = new ComboBox();
-                    Button btn = new Button();
-                    ComboBox cmbLang = new ComboBox();
+                    var lbl = new Label();
+                    var cmb = new ComboBox();
+                    var btn = new Button();
+                    var cmbLang = new ComboBox();
 
-                    pnl.SuspendLayout();
-
-                    pnl.Controls.Add(cmb);
-                    pnl.Controls.Add(cmbLang);
-                    pnl.Controls.Add(btn);
-                    pnl.Controls.Add(lbl);
-                    pnl.Name = "panelSearch";
-                    pnl.Dock = DockStyle.Top;
-                    pnl.Height = cmb.Height;
-                    pnl.Enter += SearchControls_Enter;
-                    pnl.Leave += SearchControls_Leave;
-
-                    cmb.Text = "";
-                    cmb.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                    cmb.Dock = DockStyle.Fill;
-                    cmb.Name = "comboSearch";
-                    cmb.DropDownStyle = ComboBoxStyle.DropDown;
-                    cmb.ImeMode = ImeMode.NoControl;
-                    cmb.TabStop = false;
-                    cmb.AutoCompleteMode = AutoCompleteMode.None;
-                    cmb.KeyDown += SearchComboBox_KeyDown;
-
-                    if (_statuses.ContainsTab(tabName))
+                    using (ControlTransaction.Layout(pnl, false))
                     {
-                        cmb.Items.Add(_statuses.Tabs[tabName].SearchWords);
-                        cmb.Text = _statuses.Tabs[tabName].SearchWords;
+                        pnl.Controls.Add(cmb);
+                        pnl.Controls.Add(cmbLang);
+                        pnl.Controls.Add(btn);
+                        pnl.Controls.Add(lbl);
+                        pnl.Name = "panelSearch";
+                        pnl.Dock = DockStyle.Top;
+                        pnl.Height = cmb.Height;
+                        pnl.Enter += SearchControls_Enter;
+                        pnl.Leave += SearchControls_Leave;
+
+                        cmb.Text = "";
+                        cmb.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                        cmb.Dock = DockStyle.Fill;
+                        cmb.Name = "comboSearch";
+                        cmb.DropDownStyle = ComboBoxStyle.DropDown;
+                        cmb.ImeMode = ImeMode.NoControl;
+                        cmb.TabStop = false;
+                        cmb.AutoCompleteMode = AutoCompleteMode.None;
+                        cmb.KeyDown += SearchComboBox_KeyDown;
+
+                        cmbLang.Text = "";
+                        cmbLang.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                        cmbLang.Dock = DockStyle.Right;
+                        cmbLang.Width = 50;
+                        cmbLang.Name = "comboLang";
+                        cmbLang.DropDownStyle = ComboBoxStyle.DropDownList;
+                        cmbLang.TabStop = false;
+                        cmbLang.Items.Add("");
+                        cmbLang.Items.Add("ja");
+                        cmbLang.Items.Add("en");
+                        cmbLang.Items.Add("ar");
+                        cmbLang.Items.Add("da");
+                        cmbLang.Items.Add("nl");
+                        cmbLang.Items.Add("fa");
+                        cmbLang.Items.Add("fi");
+                        cmbLang.Items.Add("fr");
+                        cmbLang.Items.Add("de");
+                        cmbLang.Items.Add("hu");
+                        cmbLang.Items.Add("is");
+                        cmbLang.Items.Add("it");
+                        cmbLang.Items.Add("no");
+                        cmbLang.Items.Add("pl");
+                        cmbLang.Items.Add("pt");
+                        cmbLang.Items.Add("ru");
+                        cmbLang.Items.Add("es");
+                        cmbLang.Items.Add("sv");
+                        cmbLang.Items.Add("th");
+
+                        lbl.Text = "Search(C-S-f)";
+                        lbl.Name = "label1";
+                        lbl.Dock = DockStyle.Left;
+                        lbl.Width = 90;
+                        lbl.Height = cmb.Height;
+                        lbl.TextAlign = ContentAlignment.MiddleLeft;
+
+                        btn.Text = "Search";
+                        btn.Name = "buttonSearch";
+                        btn.UseVisualStyleBackColor = true;
+                        btn.Dock = DockStyle.Right;
+                        btn.TabStop = false;
+                        btn.Click += SearchButton_Click;
+
+                        TabClass tab;
+                        if (_statuses.Tabs.TryGetValue(tabName, out tab))
+                        {
+                            if (!string.IsNullOrEmpty(tab.SearchWords))
+                            {
+                                cmb.Items.Add(tab.SearchWords);
+                                cmb.Text = tab.SearchWords;
+                            }
+
+                            cmbLang.Text = tab.SearchLang;
+                        }
+
+                        _tabPage.Controls.Add(pnl);
                     }
-
-                    cmbLang.Text = "";
-                    cmbLang.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                    cmbLang.Dock = DockStyle.Right;
-                    cmbLang.Width = 50;
-                    cmbLang.Name = "comboLang";
-                    cmbLang.DropDownStyle = ComboBoxStyle.DropDownList;
-                    cmbLang.TabStop = false;
-                    cmbLang.Items.Add("");
-                    cmbLang.Items.Add("ja");
-                    cmbLang.Items.Add("en");
-                    cmbLang.Items.Add("ar");
-                    cmbLang.Items.Add("da");
-                    cmbLang.Items.Add("nl");
-                    cmbLang.Items.Add("fa");
-                    cmbLang.Items.Add("fi");
-                    cmbLang.Items.Add("fr");
-                    cmbLang.Items.Add("de");
-                    cmbLang.Items.Add("hu");
-                    cmbLang.Items.Add("is");
-                    cmbLang.Items.Add("it");
-                    cmbLang.Items.Add("no");
-                    cmbLang.Items.Add("pl");
-                    cmbLang.Items.Add("pt");
-                    cmbLang.Items.Add("ru");
-                    cmbLang.Items.Add("es");
-                    cmbLang.Items.Add("sv");
-                    cmbLang.Items.Add("th");
-                    if (_statuses.ContainsTab(tabName)) cmbLang.Text = _statuses.Tabs[tabName].SearchLang;
-
-                    lbl.Text = "Search(C-S-f)";
-                    lbl.Name = "label1";
-                    lbl.Dock = DockStyle.Left;
-                    lbl.Width = 90;
-                    lbl.Height = cmb.Height;
-                    lbl.TextAlign = ContentAlignment.MiddleLeft;
-
-                    btn.Text = "Search";
-                    btn.Name = "buttonSearch";
-                    btn.UseVisualStyleBackColor = true;
-                    btn.Dock = DockStyle.Right;
-                    btn.TabStop = false;
-                    btn.Click += SearchButton_Click;
                 }
 
+                _tabPage.Tag = _listCustom;
                 this.ListTab.Controls.Add(_tabPage);
-                _tabPage.Controls.Add(_listCustom);
-
-                if (tabType == MyCommon.TabUsageType.PublicSearch) _tabPage.Controls.Add(pnl);
-                if (tabType == MyCommon.TabUsageType.UserTimeline || tabType == MyCommon.TabUsageType.Lists) _tabPage.Controls.Add(label);
 
                 _tabPage.Location = new Point(4, 4);
                 _tabPage.Name = "CTab" + cnt.ToString();
@@ -4776,6 +4684,7 @@ namespace OpenTween
                 _tabPage.TabIndex = 2 + cnt;
                 _tabPage.Text = tabName;
                 _tabPage.UseVisualStyleBackColor = true;
+                _tabPage.AccessibleRole = AccessibleRole.PageTab;
 
                 _listCustom.AllowColumnReorder = true;
                 _listCustom.ContextMenuStrip = this.ContextMenuOperate;
@@ -4817,11 +4726,8 @@ namespace OpenTween
                 _listCustom.RetrieveVirtualItem += MyList_RetrieveVirtualItem;
                 _listCustom.DrawSubItem += MyList_DrawSubItem;
                 _listCustom.HScrolled += MyList_HScrolled;
-
-                if (tabType == MyCommon.TabUsageType.PublicSearch) pnl.ResumeLayout(false);
             }
 
-            _tabPage.Tag = _listCustom;
             return true;
         }
 
@@ -5002,16 +4908,16 @@ namespace OpenTween
             }
         }
 
-        private void ListTab_SelectedIndexChanged(object sender, EventArgs e)
+        private async void ListTab_SelectedIndexChanged(object sender, EventArgs e)
         {
             //_curList.Refresh();
-            DispSelectedPost();
             SetMainWindowTitle();
             SetStatusLabelUrl();
             SetApiStatusLabel();
             if (ListTab.Focused || ((Control)ListTab.SelectedTab.Tag).Focused) this.Tag = ListTab.Tag;
             TabMenuControl(ListTab.SelectedTab.Text);
             this.PushSelectPostChain();
+            await DispSelectedPost();
         }
 
         private void SetListProperty()
@@ -5185,7 +5091,7 @@ namespace OpenTween
         private void StatusText_TextChanged(object sender, EventArgs e)
         {
             //文字数カウント
-            int pLen = GetRestStatusCount(true, false);
+            int pLen = this.GetRestStatusCount(this.FormatStatusText(this.StatusText.Text));
             lblLen.Text = pLen.ToString();
             if (pLen < 0)
             {
@@ -5197,90 +5103,102 @@ namespace OpenTween
             }
             if (string.IsNullOrEmpty(StatusText.Text))
             {
-                _reply_to_id = null;
-                _reply_to_name = null;
+                this.inReplyTo = null;
             }
         }
 
-        private int GetRestStatusCount(bool isAuto, bool isAddFooter)
+        /// <summary>
+        /// ツイート投稿前のフッター付与などの前処理を行います
+        /// </summary>
+        private string FormatStatusText(string statusText)
         {
-            //文字数カウント
-            var statusText = this.StatusText.Text;
             statusText = statusText.Replace("\r\n", "\n");
 
-            int pLen = 140 - statusText.Length;
-            if (this.NotifyIcon1 == null || !this.NotifyIcon1.Visible) return pLen;
-            if ((isAuto && !MyCommon.IsKeyDown(Keys.Control) && this._cfgCommon.PostShiftEnter) ||
-                (isAuto && !MyCommon.IsKeyDown(Keys.Shift) && !this._cfgCommon.PostShiftEnter) ||
-                (!isAuto && isAddFooter))
+            if (this.ToolStripMenuItemUrlMultibyteSplit.Checked)
+            {
+                // URLと全角文字の切り離し
+                statusText = Regex.Replace(statusText, @"https?:\/\/[-_.!~*'()a-zA-Z0-9;\/?:\@&=+\$,%#^]+", "$& ");
+            }
+
+            if (this.IdeographicSpaceToSpaceToolStripMenuItem.Checked)
+            {
+                // 文中の全角スペースを半角スペース1個にする
+                statusText = statusText.Replace("　", " ");
+            }
+
+            // DM の場合はこれ以降の処理を行わない
+            if (statusText.StartsWith("D ", StringComparison.OrdinalIgnoreCase))
+                return statusText;
+
+            bool disableFooter;
+            if (this._cfgCommon.PostShiftEnter)
+            {
+                disableFooter = MyCommon.IsKeyDown(Keys.Control);
+            }
+            else
+            {
+                if (this.StatusText.Multiline)
+                    disableFooter = MyCommon.IsKeyDown(Keys.Control);
+                else
+                    disableFooter = MyCommon.IsKeyDown(Keys.Shift);
+            }
+
+            if (statusText.Contains("RT @"))
+                disableFooter = true;
+
+            var header = "";
+            var footer = "";
+
+            var hashtag = this.HashMgr.UseHash;
+            if (!string.IsNullOrEmpty(hashtag) && !(this.HashMgr.IsNotAddToAtReply && this.inReplyTo != null))
+            {
+                if (HashMgr.IsHead)
+                    header = HashMgr.UseHash + " ";
+                else
+                    footer = " " + HashMgr.UseHash;
+            }
+
+            if (!disableFooter)
             {
                 if (this._cfgLocal.UseRecommendStatus)
-                    pLen -= this.recommendedStatusFooter.Length;
-                else if (this._cfgLocal.StatusText.Length > 0)
-                    pLen -= this._cfgLocal.StatusText.Length + 1;
-            }
-            if (!string.IsNullOrEmpty(HashMgr.UseHash))
-            {
-                pLen -= HashMgr.UseHash.Length + 1;
-            }
-            //foreach (Match m in Regex.Matches(statusText, "https?:\/\/[-_.!~*//()a-zA-Z0-9;\/?:\@&=+\$,%#^]+"))
-            //{
-            //    pLen += m.Length - SettingDialog.TwitterConfiguration.ShortUrlLength;
-            //}
-            foreach (Match m in Regex.Matches(statusText, Twitter.rgUrl, RegexOptions.IgnoreCase))
-            {
-                string before = m.Result("${before}");
-                string url = m.Result("${url}");
-                string protocol = m.Result("${protocol}");
-                string domain = m.Result("${domain}");
-                string path = m.Result("${path}");
-                if (protocol.Length == 0)
                 {
-                    if (Regex.IsMatch(before, Twitter.url_invalid_without_protocol_preceding_chars))
-                    {
-                        continue;
-                    }
-
-                    bool last_url_invalid_match = false;
-                    string lasturl = null;
-                    foreach (Match mm in Regex.Matches(domain, Twitter.url_valid_ascii_domain, RegexOptions.IgnoreCase))
-                    {
-                        lasturl = mm.ToString();
-                        last_url_invalid_match = Regex.IsMatch(lasturl, Twitter.url_invalid_short_domain, RegexOptions.IgnoreCase);
-                        if (!last_url_invalid_match)
-                        {
-                            pLen += lasturl.Length - this.tw.Configuration.ShortUrlLength;
-                        }
-                    }
-
-                    if (path.Length != 0)
-                    {
-                        if (last_url_invalid_match)
-                        {
-                            pLen += lasturl.Length - this.tw.Configuration.ShortUrlLength;
-                        }
-                        pLen += path.Length;
-                    }
+                    // 推奨ステータスを使用する
+                    footer += this.recommendedStatusFooter;
                 }
-                else
+                else if (!string.IsNullOrEmpty(this._cfgLocal.StatusText))
                 {
-                    int shortUrlLength = protocol == "https://"
-                        ? this.tw.Configuration.ShortUrlLengthHttps
-                        : this.tw.Configuration.ShortUrlLength;
-
-                    pLen += url.Length - shortUrlLength;
+                    // テキストボックスに入力されている文字列を使用する
+                    footer += " " + this._cfgLocal.StatusText.Trim();
                 }
-                
-                //if (m.Result("${url}").Length > SettingDialog.TwitterConfiguration.ShortUrlLength)
-                //{
-                //    pLen += m.Result("${url}").Length - SettingDialog.TwitterConfiguration.ShortUrlLength;
-                //}
             }
-            if (ImageSelector.Visible && !string.IsNullOrEmpty(ImageSelector.ServiceName))
+
+            statusText = header + statusText + footer;
+
+            if (this.ToolStripMenuItemApiCommandEvasion.Checked)
             {
-                pLen -= this.tw.Configuration.CharactersReservedPerMedia;
+                // APIコマンド回避
+                if (Regex.IsMatch(statusText, @"^[+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]*(get|g|fav|follow|f|on|off|stop|quit|leave|l|whois|w|nudge|n|stats|invite|track|untrack|tracks|tracking|\*)([+\-\[\]\s\\.,*/(){}^~|='&%$#""<>?]+|$)", RegexOptions.IgnoreCase)
+                   && !statusText.EndsWith(" .", StringComparison.Ordinal))
+                    statusText += " .";
             }
-            return pLen;
+
+            return statusText;
+        }
+
+        /// <summary>
+        /// 投稿欄に表示する入力可能な文字数を計算します
+        /// </summary>
+        private int GetRestStatusCount(string statusText)
+        {
+            //文字数カウント
+            var remainCount = this.tw.GetTextLengthRemain(statusText);
+
+            if (this.ImageSelector.Visible && !string.IsNullOrEmpty(this.ImageSelector.ServiceName))
+            {
+                remainCount -= this.tw.Configuration.CharactersReservedPerMedia;
+            }
+
+            return remainCount;
         }
 
         private void MyList_CacheVirtualItems(object sender, CacheVirtualItemsEventArgs e)
@@ -5946,12 +5864,6 @@ namespace OpenTween
         /// </summary>
         private void ShowSearchDialog()
         {
-            // Recentタブの検索時以外では「新規タブに表示」ボタンを無効化する
-            if (this._statuses.Tabs[this._curTab.Text].TabType == MyCommon.TabUsageType.Home)
-                this.SearchDialog.DisableNewTabButton = false;
-            else
-                this.SearchDialog.DisableNewTabButton = true;
-
             if (this.SearchDialog.ShowDialog(this) != DialogResult.OK)
             {
                 this.TopMost = this._cfgCommon.AlwaysTop;
@@ -5964,7 +5876,7 @@ namespace OpenTween
             {
                 if (searchOptions.NewTab)
                 {
-                    var tabName = searchOptions.Query;
+                    var tabName = Properties.Resources.SearchResults_TabName;
 
                     try
                     {
@@ -5975,8 +5887,8 @@ namespace OpenTween
                         MessageBox.Show(this, ex.Message, Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
 
-                    this.AddNewTab(tabName, false, MyCommon.TabUsageType.UserDefined);
-                    this._statuses.AddTab(tabName, MyCommon.TabUsageType.UserDefined, null);
+                    this.AddNewTab(tabName, false, MyCommon.TabUsageType.SearchResults);
+                    this._statuses.AddTab(tabName, MyCommon.TabUsageType.SearchResults, null);
 
                     var filter = new PostFilterRule
                     {
@@ -5984,15 +5896,25 @@ namespace OpenTween
                         UseRegex = searchOptions.UseRegex,
                         CaseSensitive = searchOptions.CaseSensitive,
                     };
-                    this._statuses.Tabs[tabName].AddFilter(filter);
+
+                    var targetTab = this._statuses.Tabs[this._curTab.Text];
+                    var posts = targetTab.Posts.Values
+                        .Where(x => filter.ExecFilter(x) == MyCommon.HITRESULT.CopyAndMark)
+                        .Where(x => targetTab.Contains(x.StatusId));
+
+                    var resultTab = this._statuses.Tabs[tabName];
+                    foreach (var post in posts)
+                    {
+                        resultTab.AddPostToInnerStorage(post);
+                    }
+
+                    this._statuses.DistributePosts();
+                    this.RefreshTimeline(false);
 
                     var tabPage = this.ListTab.TabPages.Cast<TabPage>()
                         .First(x => x.Text == tabName);
 
                     this.ListTab.SelectedTab = tabPage;
-
-                    this.ApplyPostFilters();
-                    this.SaveConfigsTabs();
                 }
                 else
                 {
@@ -6031,7 +5953,7 @@ namespace OpenTween
             for (int i = bgnIdx; i < ListTab.TabPages.Count; i++)
             {
                 //未読Index取得
-                idx = _statuses.Tabs[ListTab.TabPages[i].Text].OldestUnreadIndex;
+                idx = _statuses.Tabs[ListTab.TabPages[i].Text].NextUnreadIndex;
                 if (idx > -1)
                 {
                     ListTab.SelectedIndex = i;
@@ -6046,7 +5968,7 @@ namespace OpenTween
             {
                 for (int i = 0; i < bgnIdx; i++)
                 {
-                    idx = _statuses.Tabs[ListTab.TabPages[i].Text].OldestUnreadIndex;
+                    idx = _statuses.Tabs[ListTab.TabPages[i].Text].NextUnreadIndex;
                     if (idx > -1)
                     {
                         ListTab.SelectedIndex = i;
@@ -6092,21 +6014,21 @@ namespace OpenTween
             lst.Focus();
         }
 
-        private void StatusOpenMenuItem_Click(object sender, EventArgs e)
+        private async void StatusOpenMenuItem_Click(object sender, EventArgs e)
         {
             if (_curList.SelectedIndices.Count > 0 && _statuses.Tabs[_curTab.Text].TabType != MyCommon.TabUsageType.DirectMessage)
             {
                 var post = _statuses.Tabs[_curTab.Text][_curList.SelectedIndices[0]];
-                OpenUriAsync(MyCommon.GetStatusUrl(post));
+                await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(post));
             }
         }
 
-        private void FavorareMenuItem_Click(object sender, EventArgs e)
+        private async void FavorareMenuItem_Click(object sender, EventArgs e)
         {
             if (_curList.SelectedIndices.Count > 0)
             {
                 PostClass post = _statuses.Tabs[_curTab.Text][_curList.SelectedIndices[0]];
-                OpenUriAsync(Properties.Resources.FavstarUrl + "users/" + post.ScreenName + "/recent");
+                await this.OpenUriInBrowserAsync(Properties.Resources.FavstarUrl + "users/" + post.ScreenName + "/recent");
             }
         }
 
@@ -6199,7 +6121,7 @@ namespace OpenTween
 
                     if (dialog.ShowDialog(this) == DialogResult.Yes)
                     {
-                        await this.OpenUriAsync(versionInfo.DownloadUri.OriginalString);
+                        await this.OpenUriInBrowserAsync(versionInfo.DownloadUri.OriginalString);
                     }
                 }
             }
@@ -6215,10 +6137,10 @@ namespace OpenTween
             }
         }
 
-        private void Colorize()
+        private async Task Colorize()
         {
             _colorize = false;
-            DispSelectedPost();
+            await this.DispSelectedPost();
             //件数関連の場合、タイトル即時書き換え
             if (this._cfgCommon.DispLatestPost != MyCommon.DispTitleEnum.None &&
                this._cfgCommon.DispLatestPost != MyCommon.DispTitleEnum.Post &&
@@ -6270,24 +6192,19 @@ namespace OpenTween
             }
         }
 
-        private void DispSelectedPost()
+        private Task DispSelectedPost()
         {
-            DispSelectedPost(false);
+            return this.DispSelectedPost(false);
         }
 
         private PostClass displayPost = new PostClass();
-
-        /// <summary>
-        /// サムネイルの表示処理を表すタスク
-        /// </summary>
-        private Task thumbnailTask = null;
 
         /// <summary>
         /// サムネイル表示に使用する CancellationToken の生成元
         /// </summary>
         private CancellationTokenSource thumbnailTokenSource = null;
 
-        private void DispSelectedPost(bool forceupdate)
+        private async Task DispSelectedPost(bool forceupdate)
         {
             if (_curList.SelectedIndices.Count == 0 || _curPost == null)
                 return;
@@ -6308,25 +6225,8 @@ namespace OpenTween
 
             using (ControlTransaction.Update(this.TableLayoutPanel1))
             {
-                var sourceText = "";
-                string sourceUrl = null;
-                if (!_curPost.IsDm)
-                {
-                    var mc = Regex.Match(_curPost.SourceHtml, "<a href=\"(?<sourceurl>.+?)\"");
-                    if (mc.Success)
-                    {
-                        var src = mc.Groups["sourceurl"].Value;
-                        if (Regex.IsMatch(src, "^https?://"))
-                            sourceUrl = src;
-                        else
-                            sourceUrl = "https://twitter.com/" + src;
-                    }
-
-                    if (_curPost.Source != null)
-                        sourceText = _curPost.Source;
-                }
-                SourceLinkLabel.Text = sourceText;
-                SourceLinkLabel.Tag = sourceUrl;
+                SourceLinkLabel.Text = this._curPost.Source;
+                SourceLinkLabel.Tag = this._curPost.SourceUri;
                 SourceLinkLabel.TabStop = false; // Text を更新すると勝手に true にされる
 
                 string nameText;
@@ -6364,7 +6264,7 @@ namespace OpenTween
                     var image = IconCache.TryGetFromCache(_curPost.ImageUrl);
                     try
                     {
-                        UserPicture.Image = image != null ? image.Clone() : null;
+                        UserPicture.Image = image?.Clone();
                     }
                     catch (Exception)
                     {
@@ -6373,110 +6273,190 @@ namespace OpenTween
                 }
 
                 DateTimeLabel.Text = _curPost.CreatedAt.ToString();
-
-                if (DumpPostClassToolStripMenuItem.Checked)
-                {
-                    StringBuilder sb = new StringBuilder(512);
-
-                    sb.Append("-----Start PostClass Dump<br>");
-                    sb.AppendFormat("TextFromApi           : {0}<br>", _curPost.TextFromApi);
-                    sb.AppendFormat("(PlainText)    : <xmp>{0}</xmp><br>", _curPost.TextFromApi);
-                    sb.AppendFormat("StatusId             : {0}<br>", _curPost.StatusId.ToString());
-                    //sb.AppendFormat("ImageIndex     : {0}<br>", _curPost.ImageIndex.ToString());
-                    sb.AppendFormat("ImageUrl       : {0}<br>", _curPost.ImageUrl);
-                    sb.AppendFormat("InReplyToStatusId    : {0}<br>", _curPost.InReplyToStatusId.ToString());
-                    sb.AppendFormat("InReplyToUser  : {0}<br>", _curPost.InReplyToUser);
-                    sb.AppendFormat("IsDM           : {0}<br>", _curPost.IsDm.ToString());
-                    sb.AppendFormat("IsFav          : {0}<br>", _curPost.IsFav.ToString());
-                    sb.AppendFormat("IsMark         : {0}<br>", _curPost.IsMark.ToString());
-                    sb.AppendFormat("IsMe           : {0}<br>", _curPost.IsMe.ToString());
-                    sb.AppendFormat("IsOwl          : {0}<br>", _curPost.IsOwl.ToString());
-                    sb.AppendFormat("IsProtect      : {0}<br>", _curPost.IsProtect.ToString());
-                    sb.AppendFormat("IsRead         : {0}<br>", _curPost.IsRead.ToString());
-                    sb.AppendFormat("IsReply        : {0}<br>", _curPost.IsReply.ToString());
-
-                    foreach (string nm in _curPost.ReplyToList)
-                    {
-                        sb.AppendFormat("ReplyToList    : {0}<br>", nm);
-                    }
-
-                    sb.AppendFormat("ScreenName           : {0}<br>", _curPost.ScreenName);
-                    sb.AppendFormat("NickName       : {0}<br>", _curPost.Nickname);
-                    sb.AppendFormat("Text   : {0}<br>", _curPost.Text);
-                    sb.AppendFormat("(PlainText)    : <xmp>{0}</xmp><br>", _curPost.Text);
-                    sb.AppendFormat("CreatedAt          : {0}<br>", _curPost.CreatedAt.ToString());
-                    sb.AppendFormat("Source         : {0}<br>", _curPost.Source);
-                    sb.AppendFormat("UserId            : {0}<br>", _curPost.UserId);
-                    sb.AppendFormat("FilterHit      : {0}<br>", _curPost.FilterHit);
-                    sb.AppendFormat("RetweetedBy    : {0}<br>", _curPost.RetweetedBy);
-                    sb.AppendFormat("RetweetedId    : {0}<br>", _curPost.RetweetedId);
-                    sb.AppendFormat("SearchTabName  : {0}<br>", _curPost.RelTabName);
-
-                    sb.AppendFormat("Media.Count    : {0}<br>", _curPost.Media.Count);
-                    if (_curPost.Media.Count > 0)
-                    {
-                        for (int i = 0; i < _curPost.Media.Count; i++)
-                        {
-                            var info = _curPost.Media[i];
-                            sb.AppendFormat("Media[{0}].Url         : {1}<br>", i, info.Url);
-                            sb.AppendFormat("Media[{0}].VideoUrl    : {1}<br>", i, info.VideoUrl ?? "---");
-                        }
-                    }
-                    sb.Append("-----End PostClass Dump<br>");
-
-                    PostBrowser.DocumentText = detailHtmlFormatHeader + sb.ToString() + detailHtmlFormatFooter;
-                }
-                else
-                {
-                    // 同じIDのツイートであれば WebBrowser とサムネイルの更新を行わない
-                    // (同一ツイートの RT は文面が同じであるため同様に更新しない)
-                    if (_curPost.StatusId != oldDisplayPost.StatusId)
-                    {
-                        this.PostBrowser.DocumentText =
-                            this.createDetailHtml(_curPost.IsDeleted ? "(DELETED)" : _curPost.Text);
-
-                        this.PostBrowser.Document.Window.ScrollTo(0, 0);
-
-                        this.SplitContainer3.Panel2Collapsed = true;
-
-                        if (this._cfgCommon.PreviewEnable)
-                        {
-                            if (this.thumbnailTokenSource != null)
-                            {
-                                var oldTokenSource = this.thumbnailTokenSource;
-
-                                var cancelTask = Task.Run(() => oldTokenSource.Cancel());
-
-                                Task.WhenAll(this.thumbnailTask, cancelTask)
-                                    .ContinueWith(_ => oldTokenSource.Dispose(), TaskScheduler.Default);
-                            }
-
-                            this.thumbnailTokenSource = new CancellationTokenSource();
-
-                            var token = this.thumbnailTokenSource.Token;
-                            this.thumbnailTask = this.tweetThumbnail1.ShowThumbnailAsync(_curPost, token);
-                        }
-                    }
-                }
             }
+
+            if (DumpPostClassToolStripMenuItem.Checked)
+            {
+                StringBuilder sb = new StringBuilder(512);
+
+                sb.Append("-----Start PostClass Dump<br>");
+                sb.AppendFormat("TextFromApi           : {0}<br>", _curPost.TextFromApi);
+                sb.AppendFormat("(PlainText)    : <xmp>{0}</xmp><br>", _curPost.TextFromApi);
+                sb.AppendFormat("StatusId             : {0}<br>", _curPost.StatusId.ToString());
+                //sb.AppendFormat("ImageIndex     : {0}<br>", _curPost.ImageIndex.ToString());
+                sb.AppendFormat("ImageUrl       : {0}<br>", _curPost.ImageUrl);
+                sb.AppendFormat("InReplyToStatusId    : {0}<br>", _curPost.InReplyToStatusId.ToString());
+                sb.AppendFormat("InReplyToUser  : {0}<br>", _curPost.InReplyToUser);
+                sb.AppendFormat("IsDM           : {0}<br>", _curPost.IsDm.ToString());
+                sb.AppendFormat("IsFav          : {0}<br>", _curPost.IsFav.ToString());
+                sb.AppendFormat("IsMark         : {0}<br>", _curPost.IsMark.ToString());
+                sb.AppendFormat("IsMe           : {0}<br>", _curPost.IsMe.ToString());
+                sb.AppendFormat("IsOwl          : {0}<br>", _curPost.IsOwl.ToString());
+                sb.AppendFormat("IsProtect      : {0}<br>", _curPost.IsProtect.ToString());
+                sb.AppendFormat("IsRead         : {0}<br>", _curPost.IsRead.ToString());
+                sb.AppendFormat("IsReply        : {0}<br>", _curPost.IsReply.ToString());
+
+                foreach (string nm in _curPost.ReplyToList)
+                {
+                    sb.AppendFormat("ReplyToList    : {0}<br>", nm);
+                }
+
+                sb.AppendFormat("ScreenName           : {0}<br>", _curPost.ScreenName);
+                sb.AppendFormat("NickName       : {0}<br>", _curPost.Nickname);
+                sb.AppendFormat("Text   : {0}<br>", _curPost.Text);
+                sb.AppendFormat("(PlainText)    : <xmp>{0}</xmp><br>", _curPost.Text);
+                sb.AppendFormat("CreatedAt          : {0}<br>", _curPost.CreatedAt.ToString());
+                sb.AppendFormat("Source         : {0}<br>", _curPost.Source);
+                sb.AppendFormat("UserId            : {0}<br>", _curPost.UserId);
+                sb.AppendFormat("FilterHit      : {0}<br>", _curPost.FilterHit);
+                sb.AppendFormat("RetweetedBy    : {0}<br>", _curPost.RetweetedBy);
+                sb.AppendFormat("RetweetedId    : {0}<br>", _curPost.RetweetedId);
+
+                sb.AppendFormat("Media.Count    : {0}<br>", _curPost.Media.Count);
+                if (_curPost.Media.Count > 0)
+                {
+                    for (int i = 0; i < _curPost.Media.Count; i++)
+                    {
+                        var info = _curPost.Media[i];
+                        sb.AppendFormat("Media[{0}].Url         : {1}<br>", i, info.Url);
+                        sb.AppendFormat("Media[{0}].VideoUrl    : {1}<br>", i, info.VideoUrl ?? "---");
+                    }
+                }
+                sb.Append("-----End PostClass Dump<br>");
+
+                PostBrowser.DocumentText = detailHtmlFormatHeader + sb.ToString() + detailHtmlFormatFooter;
+                return;
+            }
+
+            var loadTasks = new List<Task>();
+
+            // 同じIDのツイートであれば WebBrowser とサムネイルの更新を行わない
+            // (同一ツイートの RT は文面が同じであるため同様に更新しない)
+            if (_curPost.StatusId != oldDisplayPost.StatusId)
+            {
+                using (ControlTransaction.Update(this.PostBrowser))
+                {
+                    this.PostBrowser.DocumentText =
+                        this.createDetailHtml(_curPost.IsDeleted ? "(DELETED)" : _curPost.Text);
+
+                    this.PostBrowser.Document.Window.ScrollTo(0, 0);
+                }
+
+                this.SplitContainer3.Panel2Collapsed = true;
+
+                if (this._cfgCommon.PreviewEnable)
+                {
+                    var oldTokenSource = Interlocked.Exchange(ref this.thumbnailTokenSource, new CancellationTokenSource());
+                    oldTokenSource?.Cancel();
+
+                    var token = this.thumbnailTokenSource.Token;
+                    loadTasks.Add(this.tweetThumbnail1.ShowThumbnailAsync(_curPost, token));
+                }
+
+                loadTasks.Add(this.AppendQuoteTweetAsync(this._curPost));
+            }
+
+            try
+            {
+                await Task.WhenAll(loadTasks);
+            }
+            catch (OperationCanceledException) { }
         }
 
-        private void MatomeMenuItem_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 発言詳細欄のツイートURLを展開する
+        /// </summary>
+        private async Task AppendQuoteTweetAsync(PostClass post)
         {
-            OpenApplicationWebsite();
+            var statusIds = post.QuoteStatusIds;
+            if (statusIds.Length == 0)
+                return;
+
+            // 「読み込み中」テキストを表示
+            var loadingQuoteHtml = statusIds.Select(x => FormatQuoteTweetHtml(x, Properties.Resources.LoadingText));
+            var body = post.Text + string.Concat(loadingQuoteHtml);
+
+            using (ControlTransaction.Update(this.PostBrowser))
+                this.PostBrowser.DocumentText = this.createDetailHtml(body);
+
+            // 引用ツイートを読み込み
+            var quoteHtmls = await Task.WhenAll(statusIds.Select(x => this.CreateQuoteTweetHtml(x)));
+
+            // 非同期処理中に表示中のツイートが変わっていたらキャンセルされたものと扱う
+            if (this._curPost != post || this._curPost.IsDeleted)
+                return;
+
+            body = post.Text + string.Concat(quoteHtmls);
+
+            using (ControlTransaction.Update(this.PostBrowser))
+                this.PostBrowser.DocumentText = this.createDetailHtml(body);
         }
 
-        private void OpenApplicationWebsite()
+        private async Task<string> CreateQuoteTweetHtml(long statusId)
         {
-            OpenUriAsync(ApplicationSettings.WebsiteUrl);
+            PostClass post = this._statuses[statusId];
+            if (post == null)
+            {
+                try
+                {
+                    post = await Task.Run(() => this.tw.GetStatusApi(false, statusId))
+                        .ConfigureAwait(false);
+                }
+                catch (WebApiException ex)
+                {
+                    return FormatQuoteTweetHtml(statusId, WebUtility.HtmlEncode(ex.Message));
+                }
+
+                post.IsRead = true;
+                if (!this._statuses.AddQuoteTweet(post))
+                    return FormatQuoteTweetHtml(statusId, "This Tweet is unavailable.");
+            }
+
+            return FormatQuoteTweetHtml(post);
         }
 
-        private void ShortcutKeyListMenuItem_Click(object sender, EventArgs e)
+        internal static string FormatQuoteTweetHtml(PostClass post)
         {
-            OpenUriAsync(ApplicationSettings.ShortcutKeyUrl);
+            var innerHtml = "<p>" + StripLinkTagHtml(post.Text) + "</p>" +
+                " &mdash; " + WebUtility.HtmlEncode(post.Nickname) +
+                " (@" + WebUtility.HtmlEncode(post.ScreenName) + ") " +
+                WebUtility.HtmlEncode(post.CreatedAt.ToString());
+
+            return FormatQuoteTweetHtml(post.StatusId, innerHtml);
         }
 
-        private void ListTab_KeyDown(object sender, KeyEventArgs e)
+        internal static string FormatQuoteTweetHtml(long statusId, string innerHtml)
+        {
+            return "<a class=\"quote-tweet-link\" href=\"//opentween/status/" + statusId + "\">" +
+                "<blockquote class=\"quote-tweet\">" + innerHtml + "</blockquote>" +
+                "</a>";
+        }
+
+        /// <summary>
+        /// 指定されたHTMLからリンクを除去します
+        /// </summary>
+        internal static string StripLinkTagHtml(string html)
+        {
+            // a 要素はネストされていない前提の正規表現パターン
+            return Regex.Replace(html, @"<a[^>]*>(.*?)</a>", "$1");
+        }
+
+        private async void MatomeMenuItem_Click(object sender, EventArgs e)
+        {
+            await this.OpenApplicationWebsite();
+        }
+
+        private async Task OpenApplicationWebsite()
+        {
+            await this.OpenUriInBrowserAsync(ApplicationSettings.WebsiteUrl);
+        }
+
+        private async void ShortcutKeyListMenuItem_Click(object sender, EventArgs e)
+        {
+            await this.OpenUriInBrowserAsync(ApplicationSettings.ShortcutKeyUrl);
+        }
+
+        private async void ListTab_KeyDown(object sender, KeyEventArgs e)
         {
             if (ListTab.SelectedTab != null)
             {
@@ -6487,664 +6467,611 @@ namespace OpenTween
                         pnl.Controls["comboLang"].Focused ||
                         pnl.Controls["buttonSearch"].Focused) return;
                 }
-                ModifierState State = GetModifierState(e.Control, e.Shift, e.Alt);
-                if (State == ModifierState.NotFlags) return;
-                if (State != ModifierState.None) _anchorFlag = false;
-                if (CommonKeyDown(e.KeyCode, FocusedControl.ListTab, State))
+
+                if (e.Control || e.Shift || e.Alt)
+                    this._anchorFlag = false;
+
+                Task asyncTask;
+                if (CommonKeyDown(e.KeyData, FocusedControl.ListTab, out asyncTask))
                 {
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
+
+                if (asyncTask != null)
+                    await asyncTask;
             }
         }
 
-        private ModifierState GetModifierState(bool sControl, bool sShift, bool sAlt)
-        {
-            ModifierState state = ModifierState.None;
-            if (sControl) state = state | ModifierState.Ctrl;
-            if (sShift) state = state | ModifierState.Shift;
-            if (sAlt) state = state | ModifierState.Alt;
-            return state;
-        }
+        private ShortcutCommand[] shortcutCommands = new ShortcutCommand[0];
 
-        [FlagsAttribute]
-        private enum ModifierState
+        private void InitializeShortcuts()
         {
-            None = 0,
-            Alt = 1,
-            Shift = 2,
-            Ctrl = 4,
-            //CShift = 11,
-            //CAlt = 12,
-            //AShift = 13,
-            NotFlags = 8,
-
-            //ListTab = 101,
-            //PostBrowser = 102,
-            //StatusText = 103,
-        }
-
-        private enum FocusedControl : int
-        {
-            None,
-            ListTab,
-            StatusText,
-            PostBrowser,
-        }
-
-        private bool CommonKeyDown(Keys KeyCode, FocusedControl Focused, ModifierState Modifier)
-        {
-            //リストのカーソル移動関係（上下キー、PageUp/Downに該当）
-            if (Focused == FocusedControl.ListTab)
+            this.shortcutCommands = new[]
             {
-                if (Modifier == (ModifierState.Ctrl | ModifierState.Shift) ||
-                    Modifier == ModifierState.Ctrl ||
-                    Modifier == ModifierState.None ||
-                    Modifier == ModifierState.Shift)
-                {
-                    if (KeyCode == Keys.J)
-                    {
-                        SendKeys.Send("{DOWN}");
-                        return true;
-                    }
-                    else if (KeyCode == Keys.K)
-                    {
-                        SendKeys.Send("{UP}");
-                        return true;
-                    }
-                }
-                if (Modifier == ModifierState.Shift ||
-                    Modifier == ModifierState.None)
-                {
-                    if (KeyCode == Keys.F)
-                    {
-                        SendKeys.Send("{PGDN}");
-                        return true;
-                    }
-                    else if (KeyCode == Keys.B)
-                    {
-                        SendKeys.Send("{PGUP}");
-                        return true;
-                    }
-                }
-            }
+                // リストのカーソル移動関係（上下キー、PageUp/Downに該当）
+                ShortcutCommand.Create(Keys.J, Keys.Control | Keys.J, Keys.Shift | Keys.J, Keys.Control | Keys.Shift | Keys.J)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => SendKeys.Send("{DOWN}")),
 
-            //修飾キーなし
-            switch (Modifier)
+                ShortcutCommand.Create(Keys.K, Keys.Control | Keys.K, Keys.Shift | Keys.K, Keys.Control | Keys.Shift | Keys.K)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => SendKeys.Send("{UP}")),
+
+                ShortcutCommand.Create(Keys.F, Keys.Shift | Keys.F)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => SendKeys.Send("{PGDN}")),
+
+                ShortcutCommand.Create(Keys.B, Keys.Shift | Keys.B)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => SendKeys.Send("{PGUP}")),
+
+                ShortcutCommand.Create(Keys.F1)
+                    .Do(() => this.OpenApplicationWebsite()),
+
+                ShortcutCommand.Create(Keys.F3)
+                    .Do(() => this.MenuItemSearchNext_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.F5)
+                    .Do(() => this.DoRefresh()),
+
+                ShortcutCommand.Create(Keys.F6)
+                    .Do(() => this.GetReplyAsync()),
+
+                ShortcutCommand.Create(Keys.F7)
+                    .Do(() => this.GetDirectMessagesAsync()),
+
+                ShortcutCommand.Create(Keys.Space, Keys.ProcessKey)
+                    .NotFocusedOn(FocusedControl.StatusText)
+                    .Do(() => { this._anchorFlag = false; this.JumpUnreadMenuItem_Click(null, null); }),
+
+                ShortcutCommand.Create(Keys.G)
+                    .NotFocusedOn(FocusedControl.StatusText)
+                    .Do(() => { this._anchorFlag = false; this.ShowRelatedStatusesMenuItem_Click(null, null); }),
+
+                ShortcutCommand.Create(Keys.Right, Keys.N)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoRelPost(forward: true)),
+
+                ShortcutCommand.Create(Keys.Left, Keys.P)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoRelPost(forward: false)),
+
+                ShortcutCommand.Create(Keys.OemPeriod)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoAnchor()),
+
+                ShortcutCommand.Create(Keys.I)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.StatusText.Enabled)
+                    .Do(() => this.StatusText.Focus()),
+
+                ShortcutCommand.Create(Keys.Enter)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.MakeReplyOrDirectStatus()),
+
+                ShortcutCommand.Create(Keys.R)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.DoRefresh()),
+
+                ShortcutCommand.Create(Keys.L)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.GoPost(forward: true); }),
+
+                ShortcutCommand.Create(Keys.H)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.GoPost(forward: false); }),
+
+                ShortcutCommand.Create(Keys.Z, Keys.Oemcomma)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.MoveTop(); }),
+
+                ShortcutCommand.Create(Keys.S)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.GoNextTab(forward: true); }),
+
+                ShortcutCommand.Create(Keys.A)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.GoNextTab(forward: false); }),
+
+                // ] in_reply_to参照元へ戻る
+                ShortcutCommand.Create(Keys.Oem4)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; return this.GoInReplyToPostTree(); }),
+
+                // [ in_reply_toへジャンプ
+                ShortcutCommand.Create(Keys.Oem6)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => { this._anchorFlag = false; this.GoBackInReplyToPostTree(); }),
+
+                ShortcutCommand.Create(Keys.Escape)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => {
+                        this._anchorFlag = false;
+                        if (ListTab.SelectedTab != null)
+                        {
+                            var tabtype = _statuses.Tabs[ListTab.SelectedTab.Text].TabType;
+                            if (tabtype == MyCommon.TabUsageType.Related || tabtype == MyCommon.TabUsageType.UserTimeline || tabtype == MyCommon.TabUsageType.PublicSearch || tabtype == MyCommon.TabUsageType.SearchResults)
+                            {
+                                var relTp = ListTab.SelectedTab;
+                                RemoveSpecifiedTab(relTp.Text, false);
+                                SaveConfigsTabs();
+                            }
+                        }
+                    }),
+
+                // 上下キー, PageUp/Downキー, Home/Endキー は既定の動作を残しつつアンカー初期化
+                ShortcutCommand.Create(Keys.Up, Keys.Down, Keys.PageUp, Keys.PageDown, Keys.Home, Keys.End)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this._anchorFlag = false, preventDefault: false),
+
+                // PreviewKeyDownEventArgs.IsInputKey を true にしてスクロールを発生させる
+                ShortcutCommand.Create(Keys.Up, Keys.Down)
+                    .FocusedOn(FocusedControl.PostBrowser)
+                    .Do(() => { }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.R)
+                    .Do(() => this.MakeReplyOrDirectStatus(isAuto: false, isReply: true)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D)
+                    .Do(() => this.doStatusDelete()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.M)
+                    .Do(() => this.MakeReplyOrDirectStatus(isAuto: false, isReply: false)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.S)
+                    .Do(() => this.FavoriteChange(FavAdd: true)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.I)
+                    .Do(() => this.doRepliedStatusOpen()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Q)
+                    .Do(() => this.doQuoteOfficial()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.B)
+                    .Do(() => this.ReadedStripMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.T)
+                    .Do(() => this.HashManageMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.L)
+                    .Do(() => this.UrlConvertAutoToolStripMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Y)
+                    .NotFocusedOn(FocusedControl.PostBrowser)
+                    .Do(() => this.MultiLineMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.F)
+                    .Do(() => this.MenuItemSubSearch_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.U)
+                    .Do(() => this.ShowUserTimeline()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.H)
+                    .Do(() => this.MoveToHomeToolStripMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.G)
+                    .Do(() => this.MoveToFavToolStripMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.O)
+                    .Do(() => this.StatusOpenMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.E)
+                    .Do(() => this.OpenURLMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Home, Keys.Control | Keys.End)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this._colorize = true, preventDefault: false),
+
+                ShortcutCommand.Create(Keys.Control | Keys.N)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoNextTab(forward: true)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.P)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoNextTab(forward: false)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.C)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.CopyStot()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.C)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.CopyStot()),
+
+                // タブダイレクト選択(Ctrl+1～8,Ctrl+9)
+                ShortcutCommand.Create(Keys.Control | Keys.D1)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 1)
+                    .Do(() => this.ListTab.SelectedIndex = 0),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D2)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 2)
+                    .Do(() => this.ListTab.SelectedIndex = 1),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D3)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 3)
+                    .Do(() => this.ListTab.SelectedIndex = 2),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D4)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 4)
+                    .Do(() => this.ListTab.SelectedIndex = 3),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D5)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 5)
+                    .Do(() => this.ListTab.SelectedIndex = 4),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D6)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 6)
+                    .Do(() => this.ListTab.SelectedIndex = 5),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D7)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 7)
+                    .Do(() => this.ListTab.SelectedIndex = 6),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D8)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => this.ListTab.TabPages.Count >= 8)
+                    .Do(() => this.ListTab.SelectedIndex = 7),
+
+                ShortcutCommand.Create(Keys.Control | Keys.D9)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.ListTab.SelectedIndex = this.ListTab.TabPages.Count - 1),
+
+                ShortcutCommand.Create(Keys.Control | Keys.A)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => this.StatusText.SelectAll()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.V)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => this.ProcClipboardFromStatusTextWhenCtrlPlusV()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Up)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (!string.IsNullOrWhiteSpace(StatusText.Text))
+                        {
+                            var inReplyToStatusId = this.inReplyTo?.Item1;
+                            var inReplyToScreenName = this.inReplyTo?.Item2;
+                            _history[_hisIdx] = new PostingStatus(StatusText.Text, inReplyToStatusId, inReplyToScreenName);
+                        }
+                        _hisIdx -= 1;
+                        if (_hisIdx < 0) _hisIdx = 0;
+
+                        var historyItem = this._history[this._hisIdx];
+                        StatusText.Text = historyItem.status;
+                        StatusText.SelectionStart = StatusText.Text.Length;
+                        if (historyItem.inReplyToId != null)
+                            this.inReplyTo = Tuple.Create(historyItem.inReplyToId.Value, historyItem.inReplyToName);
+                        else
+                            this.inReplyTo = null;
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Down)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (!string.IsNullOrWhiteSpace(StatusText.Text))
+                        {
+                            var inReplyToStatusId = this.inReplyTo?.Item1;
+                            var inReplyToScreenName = this.inReplyTo?.Item2;
+                            _history[_hisIdx] = new PostingStatus(StatusText.Text, inReplyToStatusId, inReplyToScreenName);
+                        }
+                        _hisIdx += 1;
+                        if (_hisIdx > _history.Count - 1) _hisIdx = _history.Count - 1;
+
+                        var historyItem = this._history[this._hisIdx];
+                        StatusText.Text = historyItem.status;
+                        StatusText.SelectionStart = StatusText.Text.Length;
+                        if (historyItem.inReplyToId != null)
+                            this.inReplyTo = Tuple.Create(historyItem.inReplyToId.Value, historyItem.inReplyToName);
+                        else
+                            this.inReplyTo = null;
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.PageUp, Keys.Control | Keys.P)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (ListTab.SelectedIndex == 0)
+                        {
+                            ListTab.SelectedIndex = ListTab.TabCount - 1;
+                        }
+                        else
+                        {
+                            ListTab.SelectedIndex -= 1;
+                        }
+                        StatusText.Focus();
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.PageDown, Keys.Control | Keys.N)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (ListTab.SelectedIndex == ListTab.TabCount - 1)
+                        {
+                            ListTab.SelectedIndex = 0;
+                        }
+                        else
+                        {
+                            ListTab.SelectedIndex += 1;
+                        }
+                        StatusText.Focus();
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Y)
+                    .FocusedOn(FocusedControl.PostBrowser)
+                    .Do(() => {
+                        MultiLineMenuItem.Checked = !MultiLineMenuItem.Checked;
+                        MultiLineMenuItem_Click(null, null);
+                    }),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.F3)
+                    .Do(() => this.MenuItemSearchPrev_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.F5)
+                    .Do(() => this.DoRefreshMore()),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.F6)
+                    .Do(() => this.GetReplyAsync(loadMore: true)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.F7)
+                    .Do(() => this.GetDirectMessagesAsync(loadMore: true)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.R)
+                    .NotFocusedOn(FocusedControl.StatusText)
+                    .Do(() => this.DoRefreshMore()),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.H)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoTopEnd(GoTop: true)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.L)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoTopEnd(GoTop: false)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.M)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoMiddle()),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.G)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoLast()),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.Z)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.MoveMiddle()),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.Oem4)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoBackInReplyToPostTree(parallel: true, isForward: false)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.Oem6)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoBackInReplyToPostTree(parallel: true, isForward: true)),
+
+                // お気に入り前後ジャンプ(SHIFT+N←/P→)
+                ShortcutCommand.Create(Keys.Shift | Keys.Right, Keys.Shift | Keys.N)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoFav(forward: true)),
+
+                // お気に入り前後ジャンプ(SHIFT+N←/P→)
+                ShortcutCommand.Create(Keys.Shift | Keys.Left, Keys.Shift | Keys.P)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoFav(forward: false)),
+
+                ShortcutCommand.Create(Keys.Shift | Keys.Space)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoBackSelectPostChain()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.R)
+                    .Do(() => this.doReTweetOfficial(isConfirm: true)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.P)
+                    .OnlyWhen(() => this._curPost != null)
+                    .Do(() => this.doShowUserStatus(_curPost.ScreenName, ShowInputDialog: false)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Up)
+                    .Do(() => this.ScrollDownPostBrowser(forward: false)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Down)
+                    .Do(() => this.ScrollDownPostBrowser(forward: true)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.PageUp)
+                    .Do(() => this.PageDownPostBrowser(forward: false)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.PageDown)
+                    .Do(() => this.PageDownPostBrowser(forward: true)),
+
+                // 別タブの同じ書き込みへ(ALT+←/→)
+                ShortcutCommand.Create(Keys.Alt | Keys.Right)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoSamePostToAnotherTab(left: false)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Left)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.GoSamePostToAnotherTab(left: true)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.R)
+                    .Do(() => this.MakeReplyOrDirectStatus(isAuto: false, isReply: true, isAll: true)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.C)
+                    .Do(() => this.CopyIdUri()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.F)
+                    .OnlyWhen(() => this.ListTab.SelectedTab != null &&
+                        this._statuses.Tabs[this.ListTab.SelectedTab.Text].TabType == MyCommon.TabUsageType.PublicSearch)
+                    .Do(() => this.ListTab.SelectedTab.Controls["panelSearch"].Controls["comboSearch"].Focus()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.S)
+                    .Do(() => this.FavoriteChange(FavAdd: false)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.B)
+                    .Do(() => this.UnreadStripMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.T)
+                    .Do(() => this.HashToggleMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.P)
+                    .Do(() => this.ImageSelectMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.H)
+                    .Do(() => this.doMoveToRTHome()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.O)
+                    .Do(() => this.FavorareMenuItem_Click(null, null)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.Up)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (_curList != null && _curList.VirtualListSize != 0 &&
+                                    _curList.SelectedIndices.Count > 0 && _curList.SelectedIndices[0] > 0)
+                        {
+                            var idx = _curList.SelectedIndices[0] - 1;
+                            SelectListItem(_curList, idx);
+                            _curList.EnsureVisible(idx);
+                        }
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.Down)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (_curList != null && _curList.VirtualListSize != 0 && _curList.SelectedIndices.Count > 0
+                                    && _curList.SelectedIndices[0] < _curList.VirtualListSize - 1)
+                        {
+                            var idx = _curList.SelectedIndices[0] + 1;
+                            SelectListItem(_curList, idx);
+                            _curList.EnsureVisible(idx);
+                        }
+                    }),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.Space)
+                    .FocusedOn(FocusedControl.StatusText)
+                    .Do(() => {
+                        if (StatusText.SelectionStart > 0)
+                        {
+                            int endidx = StatusText.SelectionStart - 1;
+                            string startstr = "";
+                            for (int i = StatusText.SelectionStart - 1; i >= 0; i--)
+                            {
+                                char c = StatusText.Text[i];
+                                if (Char.IsLetterOrDigit(c) || c == '_')
+                                {
+                                    continue;
+                                }
+                                if (c == '@')
+                                {
+                                    startstr = StatusText.Text.Substring(i + 1, endidx - i);
+                                    int cnt = AtIdSupl.ItemCount;
+                                    ShowSuplDialog(StatusText, AtIdSupl, startstr.Length + 1, startstr);
+                                    if (AtIdSupl.ItemCount != cnt) _modifySettingAtId = true;
+                                }
+                                else if (c == '#')
+                                {
+                                    startstr = StatusText.Text.Substring(i + 1, endidx - i);
+                                    ShowSuplDialog(StatusText, HashSupl, startstr.Length + 1, startstr);
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }),
+
+                // ソートダイレクト選択(Ctrl+Shift+1～8,Ctrl+Shift+9)
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D1)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(0)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D2)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(1)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D3)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(2)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D4)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(3)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D5)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(4)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D6)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(5)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D7)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(6)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D8)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortColumnByDisplayIndex(7)),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Shift | Keys.D9)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .Do(() => this.SetSortLastColumn()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Alt | Keys.S)
+                    .Do(() => this.FavoritesRetweetOfficial()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Alt | Keys.R)
+                    .Do(() => this.FavoritesRetweetUnofficial()),
+
+                ShortcutCommand.Create(Keys.Control | Keys.Alt | Keys.H)
+                    .Do(() => this.OpenUserAppointUrl()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.R)
+                    .FocusedOn(FocusedControl.PostBrowser)
+                    .Do(() => this.doReTweetUnofficial()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.C)
+                    .FocusedOn(FocusedControl.PostBrowser)
+                    .Do(() => this.CopyUserId()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.T)
+                    .OnlyWhen(() => this.ExistCurrentPost)
+                    .Do(() => this.doTranslation(_curPost.TextFromApi)),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.R)
+                    .Do(() => this.doReTweetUnofficial()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.C)
+                    .Do(() => this.CopyUserId()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.Up)
+                    .Do(() => this.tweetThumbnail1.ScrollUp()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.Down)
+                    .Do(() => this.tweetThumbnail1.ScrollDown()),
+
+                ShortcutCommand.Create(Keys.Alt | Keys.Shift | Keys.Enter)
+                    .FocusedOn(FocusedControl.ListTab)
+                    .OnlyWhen(() => !this.SplitContainer3.Panel2Collapsed)
+                    .Do(() => this.OpenThumbnailPicture(this.tweetThumbnail1.Thumbnail)),
+            };
+        }
+
+        private bool CommonKeyDown(Keys keyData, FocusedControl focusedOn, out Task asyncTask)
+        {
+            // Task を返す非同期処理があれば asyncTask に代入する
+            asyncTask = null;
+
+            // ShortcutCommand に対応しているコマンドはここで処理される
+            foreach (var command in this.shortcutCommands)
             {
-                case ModifierState.None:
-                    //フォーカス関係なし
-                    switch (KeyCode)
-                    {
-                        case Keys.F1:
-                            OpenApplicationWebsite();
-                            return true;
-                        case Keys.F3:
-                            MenuItemSearchNext_Click(null, null);
-                            return true;
-                        case Keys.F5:
-                            DoRefresh();
-                            return true;
-                        case Keys.F6:
-                            this.GetReplyAsync();
-                            return true;
-                        case Keys.F7:
-                            this.GetDirectMessagesAsync();
-                            return true;
-                    }
-                    if (Focused != FocusedControl.StatusText)
-                    {
-                        //フォーカスStatusText以外
-                        switch (KeyCode)
-                        {
-                            case Keys.Space:
-                            case Keys.ProcessKey:
-                                if (Focused == FocusedControl.ListTab) _anchorFlag = false;
-                                JumpUnreadMenuItem_Click(null, null);
-                                return true;
-                            case Keys.G:
-                                if (Focused == FocusedControl.ListTab) _anchorFlag = false;
-                                ShowRelatedStatusesMenuItem_Click(null, null);
-                                return true;
-                        }
-                    }
-                    if (Focused == FocusedControl.ListTab)
-                    {
-                        //フォーカスList
-                        switch (KeyCode)
-                        {
-                            case Keys.N:
-                            case Keys.Right:
-                                GoRelPost(true);
-                                return true;
-                            case Keys.P:
-                            case Keys.Left:
-                                GoRelPost(false);
-                                return true;
-                            case Keys.OemPeriod:
-                                GoAnchor();
-                                return true;
-                            case Keys.I:
-                                if (this.StatusText.Enabled) this.StatusText.Focus();
-                                return true;
-                            case Keys.Enter:
-                                MakeReplyOrDirectStatus();
-                                return true;
-                            case Keys.R:
-                                DoRefresh();
-                                return true;
-                        }
-                        //以下、アンカー初期化
-                        _anchorFlag = false;
-                        switch (KeyCode)
-                        {
-                            case Keys.L:
-                                GoPost(true);
-                                return true;
-                            case Keys.H:
-                                GoPost(false);
-                                return true;
-                            case Keys.Z:
-                            case Keys.Oemcomma:
-                                MoveTop();
-                                return true;
-                            case Keys.S:
-                                GoNextTab(true);
-                                return true;
-                            case Keys.A:
-                                GoNextTab(false);
-                                return true;
-                            case Keys.Oem4:
-                                // ] in_reply_to参照元へ戻る
-                                GoInReplyToPostTree();
-                                return true;
-                            case Keys.Oem6:
-                                // [ in_reply_toへジャンプ
-                                GoBackInReplyToPostTree();
-                                return true;
-                            case Keys.Escape:
-                                if (ListTab.SelectedTab != null)
-                                {
-                                    MyCommon.TabUsageType tabtype = _statuses.Tabs[ListTab.SelectedTab.Text].TabType;
-                                    if (tabtype == MyCommon.TabUsageType.Related || tabtype == MyCommon.TabUsageType.UserTimeline || tabtype == MyCommon.TabUsageType.PublicSearch)
-                                    {
-                                        TabPage relTp = ListTab.SelectedTab;
-                                        RemoveSpecifiedTab(relTp.Text, false);
-                                        SaveConfigsTabs();
-                                        return true;
-                                    }
-                                }
-                                break;
-                        }
-                    }
-                    else if (Focused == FocusedControl.PostBrowser)
-                    {
-                        //フォーカスPostBrowser
-                        switch (KeyCode)
-                        {
-                            case Keys.Up:
-                            case Keys.Down:
-                                //スクロールを発生させるため、true を返す
-                                return true;
-                        }
-                    }
-                    break;
-                case ModifierState.Ctrl:
-                    //フォーカス関係なし
-                    switch (KeyCode)
-                    {
-                        case Keys.R:
-                            MakeReplyOrDirectStatus(false, true);
-                            return true;
-                        case Keys.D:
-                            doStatusDelete();
-                            return true;
-                        case Keys.M:
-                            MakeReplyOrDirectStatus(false, false);
-                            return true;
-                        case Keys.S:
-                            FavoriteChange(true);
-                            return true;
-                        case Keys.I:
-                            doRepliedStatusOpen();
-                            return true;
-                        case Keys.Q:
-                            doQuote();
-                            return true;
-                        case Keys.B:
-                            ReadedStripMenuItem_Click(null, null);
-                            return true;
-                        case Keys.T:
-                            HashManageMenuItem_Click(null, null);
-                            return true;
-                        case Keys.L:
-                            UrlConvertAutoToolStripMenuItem_Click(null, null);
-                            return true;
-                        case Keys.Y:
-                            if (Focused != FocusedControl.PostBrowser)
-                            {
-                                MultiLineMenuItem_Click(null, null);
-                                return true;
-                            }
-                            break;
-                        case Keys.F:
-                            MenuItemSubSearch_Click(null, null);
-                            return true;
-                        case Keys.U:
-                            ShowUserTimeline();
-                            return true;
-                        case Keys.H:
-                            // Webページを開く動作
-                            MoveToHomeToolStripMenuItem_Click(null, null);
-                            return true;
-                        case Keys.G:
-                            // Webページを開く動作
-                            MoveToFavToolStripMenuItem_Click(null, null);
-                            return true;
-                        case Keys.O:
-                            // Webページを開く動作
-                            StatusOpenMenuItem_Click(null, null);
-                            return true;
-                        case Keys.E:
-                            // Webページを開く動作
-                            OpenURLMenuItem_Click(null, null);
-                            return true;
-                    }
-                    //フォーカスList
-                    if (Focused == FocusedControl.ListTab)
-                    {
-                        switch (KeyCode)
-                        {
-                            case Keys.Home:
-                            case Keys.End:
-                                _colorize = true;
-                                return false;            //スルーする
-                            case Keys.N:
-                                GoNextTab(true);
-                                return true;
-                            case Keys.P:
-                                GoNextTab(false);
-                                return true;
-                            case Keys.C:
-                                CopyStot();
-                                return true;
-                            case Keys.D1:
-                            case Keys.D2:
-                            case Keys.D3:
-                            case Keys.D4:
-                            case Keys.D5:
-                            case Keys.D6:
-                            case Keys.D7:
-                            case Keys.D8:
-                                // タブダイレクト選択(Ctrl+1～8,Ctrl+9)
-                                int tabNo = KeyCode - Keys.D1;
-                                if (ListTab.TabPages.Count < tabNo)
-                                    return false;
-                                ListTab.SelectedIndex = tabNo;
-                                return true;
-                            case Keys.D9:
-                                ListTab.SelectedIndex = ListTab.TabPages.Count - 1;
-                                return true;
-                        }
-                    }
-                    else if (Focused == FocusedControl.StatusText)
-                    {
-                        //フォーカスStatusText
-                        switch (KeyCode)
-                        {
-                            case Keys.A:
-                                StatusText.SelectAll();
-                                return true;
-                            case Keys.Up:
-                            case Keys.Down:
-                                if (!string.IsNullOrWhiteSpace(StatusText.Text))
-                                {
-                                    _history[_hisIdx] = new PostingStatus(StatusText.Text, _reply_to_id, _reply_to_name);
-                                }
-                                if (KeyCode == Keys.Up)
-                                {
-                                    _hisIdx -= 1;
-                                    if (_hisIdx < 0) _hisIdx = 0;
-                                }
-                                else
-                                {
-                                    _hisIdx += 1;
-                                    if (_hisIdx > _history.Count - 1) _hisIdx = _history.Count - 1;
-                                }
-                                StatusText.Text = _history[_hisIdx].status;
-                                _reply_to_id = _history[_hisIdx].inReplyToId;
-                                _reply_to_name = _history[_hisIdx].inReplyToName;
-                                StatusText.SelectionStart = StatusText.Text.Length;
-                                return true;
-                            case Keys.PageUp:
-                            case Keys.P:
-                                if (ListTab.SelectedIndex == 0)
-                                {
-                                    ListTab.SelectedIndex = ListTab.TabCount - 1;
-                                }
-                                else
-                                {
-                                    ListTab.SelectedIndex -= 1;
-                                }
-                                StatusText.Focus();
-                                return true;
-                            case Keys.PageDown:
-                            case Keys.N:
-                                if (ListTab.SelectedIndex == ListTab.TabCount - 1)
-                                {
-                                    ListTab.SelectedIndex = 0;
-                                }
-                                else
-                                {
-                                    ListTab.SelectedIndex += 1;
-                                }
-                                StatusText.Focus();
-                                return true;
-                        }
-                    }
-                    else
-                    {
-                        //フォーカスPostBrowserもしくは関係なし
-                        switch (KeyCode)
-                        {
-                            case Keys.Y:
-                                MultiLineMenuItem.Checked = !MultiLineMenuItem.Checked;
-                                MultiLineMenuItem_Click(null, null);
-                                return true;
-                        }
-                    }
-                    break;
-                case ModifierState.Shift:
-                    //フォーカス関係なし
-                    switch (KeyCode)
-                    {
-                        case Keys.F3:
-                            MenuItemSearchPrev_Click(null, null);
-                            return true;
-                        case Keys.F5:
-                            DoRefreshMore();
-                            return true;
-                        case Keys.F6:
-                            this.GetReplyAsync(loadMore: true);
-                            return true;
-                        case Keys.F7:
-                            this.GetDirectMessagesAsync(loadMore: true);
-                            return true;
-                    }
-                    //フォーカスStatusText以外
-                    if (Focused != FocusedControl.StatusText)
-                    {
-                        if (KeyCode == Keys.R)
-                        {
-                            DoRefreshMore();
-                            return true;
-                        }
-                    }
-                    //フォーカスリスト
-                    if (Focused == FocusedControl.ListTab)
-                    {
-                        switch (KeyCode)
-                        {
-                            case Keys.H:
-                                GoTopEnd(true);
-                                return true;
-                            case Keys.L:
-                                GoTopEnd(false);
-                                return true;
-                            case Keys.M:
-                                GoMiddle();
-                                return true;
-                            case Keys.G:
-                                GoLast();
-                                return true;
-                            case Keys.Z:
-                                MoveMiddle();
-                                return true;
-                            case Keys.Oem4:
-                                GoBackInReplyToPostTree(true, false);
-                                return true;
-                            case Keys.Oem6:
-                                GoBackInReplyToPostTree(true, true);
-                                return true;
-                            case Keys.N:
-                            case Keys.Right:
-                                // お気に入り前後ジャンプ(SHIFT+N←/P→)
-                                GoFav(true);
-                                return true;
-                            case Keys.P:
-                            case Keys.Left:
-                                // お気に入り前後ジャンプ(SHIFT+N←/P→)
-                                GoFav(false);
-                                return true;
-                            case Keys.Space:
-                                this.GoBackSelectPostChain();
-                                return true;
-                        }
-                    }
-                    break;
-                case ModifierState.Alt:
-                    switch (KeyCode)
-                    {
-                        case Keys.R:
-                            doReTweetOfficial(true);
-                            return true;
-                        case Keys.P:
-                            if (_curPost != null)
-                            {
-                                doShowUserStatus(_curPost.ScreenName, false);
-                                return true;
-                            }
-                            break;
-                        case Keys.Up:
-                            ScrollDownPostBrowser(false);
-                            return true;
-                        case Keys.Down:
-                            ScrollDownPostBrowser(true);
-                            return true;
-                        case Keys.PageUp:
-                            PageDownPostBrowser(false);
-                            return true;
-                        case Keys.PageDown:
-                            PageDownPostBrowser(true);
-                            return true;
-                    }
-                    if (Focused == FocusedControl.ListTab)
-                    {
-                        // 別タブの同じ書き込みへ(ALT+←/→)
-                        if (KeyCode == Keys.Right)
-                        {
-                            GoSamePostToAnotherTab(false);
-                            return true;
-                        }
-                        else if (KeyCode == Keys.Left)
-                        {
-                            GoSamePostToAnotherTab(true);
-                            return true;
-                        }
-                    }
-                    break;
-                case ModifierState.Ctrl | ModifierState.Shift:
-                    switch (KeyCode)
-                    {
-                        case Keys.R:
-                            MakeReplyOrDirectStatus(false, true, true);
-                            return true;
-                        case Keys.C:
-                            CopyIdUri();
-                            return true;
-                        case Keys.F:
-                            if (ListTab.SelectedTab != null)
-                            {
-                                if (_statuses.Tabs[ListTab.SelectedTab.Text].TabType == MyCommon.TabUsageType.PublicSearch)
-                                {
-                                    ListTab.SelectedTab.Controls["panelSearch"].Controls["comboSearch"].Focus();
-                                    return true;
-                                }
-                            }
-                            break;
-                        case Keys.S:
-                            FavoriteChange(false);
-                            return true;
-                        case Keys.B:
-                            UnreadStripMenuItem_Click(null, null);
-                            return true;
-                        case Keys.T:
-                            HashToggleMenuItem_Click(null, null);
-                            return true;
-                        case Keys.P:
-                            ImageSelectMenuItem_Click(null, null);
-                            return true;
-                        case Keys.H:
-                            doMoveToRTHome();
-                            return true;
-                        case Keys.O:
-                            FavorareMenuItem_Click(null, null);
-                            return true;
-                    }
-                    if (Focused == FocusedControl.StatusText)
-                    {
-                        int idx = 0;
-                        switch (KeyCode)
-                        {
-                            case Keys.Up:
-                                if (_curList != null && _curList.VirtualListSize != 0 &&
-                                            _curList.SelectedIndices.Count > 0 && _curList.SelectedIndices[0] > 0)
-                                {
-                                    idx = _curList.SelectedIndices[0] - 1;
-                                    SelectListItem(_curList, idx);
-                                    _curList.EnsureVisible(idx);
-                                    return true;
-                                }
-                                break;
-                            case Keys.Down:
-                                if (_curList != null && _curList.VirtualListSize != 0 && _curList.SelectedIndices.Count > 0
-                                            && _curList.SelectedIndices[0] < _curList.VirtualListSize - 1)
-                                {
-                                    idx = _curList.SelectedIndices[0] + 1;
-                                    SelectListItem(_curList, idx);
-                                    _curList.EnsureVisible(idx);
-                                    return true;
-                                }
-                                break;
-                            case Keys.Space:
-                                if (StatusText.SelectionStart > 0)
-                                {
-                                    int endidx = StatusText.SelectionStart - 1;
-                                    string startstr = "";
-                                    bool pressed = false;
-                                    for (int i = StatusText.SelectionStart - 1; i >= 0; i--)
-                                    {
-                                        char c = StatusText.Text[i];
-                                        if (Char.IsLetterOrDigit(c) || c == '_')
-                                        {
-                                            continue;
-                                        }
-                                        if (c == '@')
-                                        {
-                                            pressed = true;
-                                            startstr = StatusText.Text.Substring(i + 1, endidx - i);
-                                            int cnt = AtIdSupl.ItemCount;
-                                            ShowSuplDialog(StatusText, AtIdSupl, startstr.Length + 1, startstr);
-                                            if (AtIdSupl.ItemCount != cnt) _modifySettingAtId = true;
-                                        }
-                                        else if (c == '#')
-                                        {
-                                            pressed = true;
-                                            startstr = StatusText.Text.Substring(i + 1, endidx - i);
-                                            ShowSuplDialog(StatusText, HashSupl, startstr.Length + 1, startstr);
-                                        }
-                                        else
-                                        {
-                                            break;
-                                        }
-                                    }
-                                    return pressed;
-                                }
-                                break;
-                        }
-                    }
-                    else if (Focused == FocusedControl.ListTab)
-                    {
-                        DetailsListView lst = (DetailsListView)ListTab.SelectedTab.Tag;
-                        ColumnHeader col;
-                        switch (KeyCode)
-                        {
-                            case Keys.D1:
-                            case Keys.D2:
-                            case Keys.D3:
-                            case Keys.D4:
-                            case Keys.D5:
-                            case Keys.D6:
-                            case Keys.D7:
-                            case Keys.D8:
-                                // ソートダイレクト選択(Ctrl+Shift+1～8,Ctrl+Shift+9)
-                                int colNo = KeyCode - Keys.D1;
-                                if (lst.Columns.Count < colNo) return false;
-                                col = lst.Columns.Cast<ColumnHeader>().Where((x) => { return x.DisplayIndex == colNo; }).FirstOrDefault();
-                                if (col == null) return false;
-                                MyList_ColumnClick(lst, new ColumnClickEventArgs(col.Index));
-                                return true;
-                            case Keys.D9:
-                                col = lst.Columns.Cast<ColumnHeader>().OrderByDescending((x) => { return x.DisplayIndex; }).First();
-                                MyList_ColumnClick(lst, new ColumnClickEventArgs(col.Index));
-                                return true;
-                        }
-                    }
-                    break;
-                case ModifierState.Ctrl | ModifierState.Alt:
-                    if (KeyCode == Keys.S)
-                    {
-                        FavoritesRetweetOriginal();
-                        return true;
-                    }
-                    else if (KeyCode == Keys.R)
-                    {
-                        FavoritesRetweetUnofficial();
-                        return true;
-                    }
-                    else if (KeyCode == Keys.H)
-                    {
-                        OpenUserAppointUrl();
-                        return true;
-                    }
-                    break;
-                case ModifierState.Alt | ModifierState.Shift:
-                    if (Focused == FocusedControl.PostBrowser)
-                    {
-                        if (KeyCode == Keys.R)
-                            doReTweetUnofficial();
-                        else if (KeyCode == Keys.C)
-                            CopyUserId();
-                        return true;
-                    }
-                    switch (KeyCode)
-                    {
-                        case Keys.T:
-                            if (!this.ExistCurrentPost) return false;
-                            doTranslation(_curPost.TextFromApi);
-                            return true;
-                        case Keys.R:
-                            doReTweetUnofficial();
-                            return true;
-                        case Keys.C:
-                            CopyUserId();
-                            return true;
-                        case Keys.Up:
-                            this.tweetThumbnail1.ScrollUp();
-                            return true;
-                        case Keys.Down:
-                            this.tweetThumbnail1.ScrollDown();
-                            return true;
-                    }
-                    if (Focused == FocusedControl.ListTab && KeyCode == Keys.Enter)
-                    {
-                        if (!this.SplitContainer3.Panel2Collapsed)
-                        {
-                            OpenThumbnailPicture(this.tweetThumbnail1.Thumbnail);
-                        }
-                        return true;
-                    }
-                    break;
+                if (command.IsMatch(keyData, focusedOn))
+                {
+                    asyncTask = command.RunCommand();
+                    return command.PreventDefault;
+                }
             }
 
             return false;
@@ -7585,7 +7512,7 @@ namespace OpenTween
             _curList.EnsureVisible(idx);
         }
 
-        private void GoInReplyToPostTree()
+        private async Task GoInReplyToPostTree()
         {
             if (_curPost == null) return;
 
@@ -7593,19 +7520,19 @@ namespace OpenTween
 
             if (curTabClass.TabType == MyCommon.TabUsageType.PublicSearch && _curPost.InReplyToStatusId == null && _curPost.TextFromApi.Contains("@"))
             {
-                PostClass post = null;
-                string r = tw.GetStatusApi(false, _curPost.StatusId, ref post);
-                if (string.IsNullOrEmpty(r) && post != null)
+                try
                 {
+                    var post = tw.GetStatusApi(false, _curPost.StatusId);
+
                     _curPost.InReplyToStatusId = post.InReplyToStatusId;
                     _curPost.InReplyToUser = post.InReplyToUser;
                     _curPost.IsReply = post.IsReply;
                     this.PurgeListViewItemCache();
                     _curList.RedrawItems(_curItemIndex, _curItemIndex, false);
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    this.StatusLabel.Text = r;
+                    this.StatusLabel.Text = ex.Message;
                 }
             }
 
@@ -7631,42 +7558,38 @@ namespace OpenTween
                                  where index != -1
                                  select new {Tab = tab, Index = index};
 
-            try
+            var inReplyPost = inReplyToPosts.FirstOrDefault();
+            if (inReplyPost == null)
             {
-                var inReplyPost = inReplyToPosts.First();
-                inReplyToTabName = inReplyPost.Tab.TabName;
-                inReplyToIndex = inReplyPost.Index;
-            }
-            catch (InvalidOperationException)
-            {
-                PostClass post = null;
-                string r = tw.GetStatusApi(false, _curPost.InReplyToStatusId.Value, ref post);
-                if (string.IsNullOrEmpty(r) && post != null)
+                try
                 {
-                    post.IsRead = true;
-                    _statuses.AddPost(post);
-                    _statuses.DistributePosts();
-                    //_statuses.SubmitUpdate(null, null, null, false);
-                    this.RefreshTimeline(false);
-                    try
+                    await Task.Run(() =>
                     {
-                        var inReplyPost = inReplyToPosts.First();
-                        inReplyToTabName = inReplyPost.Tab.TabName;
-                        inReplyToIndex = inReplyPost.Index;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        OpenUriAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
-                        return;
-                    }
+                        var post = tw.GetStatusApi(false, _curPost.InReplyToStatusId.Value);
+                        post.IsRead = true;
+
+                        _statuses.AddPost(post);
+                        _statuses.DistributePosts();
+                    });
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    this.StatusLabel.Text = r;
-                    OpenUriAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
+                    this.StatusLabel.Text = ex.Message;
+                    await this.OpenUriInBrowserAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
+                    return;
+                }
+
+                this.RefreshTimeline(false);
+
+                inReplyPost = inReplyToPosts.FirstOrDefault();
+                if (inReplyPost == null)
+                {
+                    await this.OpenUriInBrowserAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
                     return;
                 }
             }
+            inReplyToTabName = inReplyPost.Tab.TabName;
+            inReplyToIndex = inReplyPost.Index;
 
             TabPage tabPage = this.ListTab.TabPages.Cast<TabPage>().First((tp) => { return tp.Text == inReplyToTabName; });
             DetailsListView listView = (DetailsListView)tabPage.Tag;
@@ -7926,17 +7849,19 @@ namespace OpenTween
             StatusText.BackColor = Color.FromKnownColor(KnownColor.Window);
         }
 
-        private void StatusText_KeyDown(object sender, KeyEventArgs e)
+        private async void StatusText_KeyDown(object sender, KeyEventArgs e)
         {
-            ModifierState State = GetModifierState(e.Control, e.Shift, e.Alt);
-            if (State == ModifierState.NotFlags) return;
-            if (CommonKeyDown(e.KeyCode, FocusedControl.StatusText, State))
+            Task asyncTask;
+            if (CommonKeyDown(e.KeyData, FocusedControl.StatusText, out asyncTask))
             {
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
 
             this.StatusText_TextChanged(null, null);
+
+            if (asyncTask != null)
+                await asyncTask;
         }
 
         private void SaveConfigsAll(bool ifModified)
@@ -8076,8 +8001,11 @@ namespace OpenTween
             SettingTabs tabSetting = new SettingTabs();
             for (int i = 0; i < ListTab.TabPages.Count; i++)
             {
-                if (_statuses.Tabs[ListTab.TabPages[i].Text].TabType != MyCommon.TabUsageType.Related) tabSetting.Tabs.Add(_statuses.Tabs[ListTab.TabPages[i].Text]);
+                var tab = _statuses.Tabs[ListTab.TabPages[i].Text];
+                if (tab.TabType != MyCommon.TabUsageType.Related && tab.TabType != MyCommon.TabUsageType.SearchResults)
+                    tabSetting.Tabs.Add(tab);
             }
+            tabSetting.Tabs.Add(this._statuses.GetTabByType(MyCommon.TabUsageType.Mute));
             tabSetting.Save();
         }
 
@@ -8096,36 +8024,10 @@ namespace OpenTween
                 return;
             }
 
-            var statusId = long.Parse(match.Groups["StatusId"].Value);
-
-            var post = this._statuses[statusId];
-            if (post == null)
-            {
-                try
-                {
-                    post = await Task.Run(() =>
-                    {
-                        PostClass newPost = null;
-
-                        var err = this.tw.GetStatusApi(false, statusId, ref newPost);
-                        if (!string.IsNullOrEmpty(err))
-                            throw new WebApiException(err);
-
-                        return newPost;
-                    });
-                }
-                catch (WebApiException ex)
-                {
-                    var message = ex.Message;
-                    MessageBox.Show(this, string.Format(Properties.Resources.OpenURL_LoadFailed, message),
-                        Properties.Resources.OpenURL_Caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-            }
-
             try
             {
-                await this.OpenRelatedTab(post);
+                var statusId = long.Parse(match.Groups["StatusId"].Value);
+                await this.OpenRelatedTab(statusId);
             }
             catch (TabException ex)
             {
@@ -8192,33 +8094,36 @@ namespace OpenTween
             this.TopMost = this._cfgCommon.AlwaysTop;
         }
 
-        private void PostBrowser_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        private async void PostBrowser_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
-            ModifierState State = GetModifierState(e.Control, e.Shift, e.Alt);
-            if (State == ModifierState.NotFlags) return;
-            bool KeyRes = CommonKeyDown(e.KeyCode, FocusedControl.PostBrowser, State);
+            Task asyncTask;
+            bool KeyRes = CommonKeyDown(e.KeyData, FocusedControl.PostBrowser, out asyncTask);
             if (KeyRes)
             {
                 e.IsInputKey = true;
-                return;
             }
-
-            if (Enum.IsDefined(typeof(Shortcut), (Shortcut)e.KeyData))
+            else
             {
-                var shortcut = (Shortcut)e.KeyData;
-                switch (shortcut)
+                if (Enum.IsDefined(typeof(Shortcut), (Shortcut)e.KeyData))
                 {
-                    case Shortcut.CtrlA:
-                    case Shortcut.CtrlC:
-                    case Shortcut.CtrlIns:
-                        // 既定の動作を有効にする
-                        return;
-                    default:
-                        // その他のショートカットキーは無効にする
-                        e.IsInputKey = true;
-                        return;
+                    var shortcut = (Shortcut)e.KeyData;
+                    switch (shortcut)
+                    {
+                        case Shortcut.CtrlA:
+                        case Shortcut.CtrlC:
+                        case Shortcut.CtrlIns:
+                            // 既定の動作を有効にする
+                            break;
+                        default:
+                            // その他のショートカットキーは無効にする
+                            e.IsInputKey = true;
+                            break;
+                    }
                 }
             }
+
+            if (asyncTask != null)
+                await asyncTask;
         }
         public bool TabRename(ref string tabName)
         {
@@ -8361,25 +8266,22 @@ namespace OpenTween
 
         public void ReOrderTab(string targetTabText, string baseTabText, bool isBeforeBaseTab)
         {
-            int baseIndex = 0;
-            for (baseIndex = 0; baseIndex < ListTab.TabPages.Count; baseIndex++)
-            {
-                if (ListTab.TabPages[baseIndex].Text == baseTabText) break;
-            }
+            var baseIndex = this.GetTabPageIndex(baseTabText);
+            if (baseIndex == -1)
+                return;
+
+            var targetIndex = this.GetTabPageIndex(targetTabText);
+            if (targetIndex == -1)
+                return;
 
             using (ControlTransaction.Layout(this.ListTab))
             {
-                TabPage mTp = null;
-                for (int j = 0; j < ListTab.TabPages.Count; j++)
-                {
-                    if (ListTab.TabPages[j].Text == targetTabText)
-                    {
-                        mTp = ListTab.TabPages[j];
-                        ListTab.TabPages.Remove(mTp);
-                        if (j < baseIndex) baseIndex -= 1;
-                        break;
-                    }
-                }
+                var mTp = this.ListTab.TabPages[targetIndex];
+                this.ListTab.TabPages.Remove(mTp);
+
+                if (targetIndex < baseIndex)
+                    baseIndex--;
+
                 if (isBeforeBaseTab)
                     ListTab.TabPages.Insert(baseIndex, mTp);
                 else
@@ -8415,8 +8317,7 @@ namespace OpenTween
                         StatusText.Text = "D " + _curPost.ScreenName + " " + StatusText.Text;
                         StatusText.SelectionStart = StatusText.Text.Length;
                         StatusText.Focus();
-                        _reply_to_id = null;
-                        _reply_to_name = null;
+                        this.inReplyTo = null;
                         return;
                     }
                     if (string.IsNullOrEmpty(StatusText.Text))
@@ -8425,15 +8326,10 @@ namespace OpenTween
 
                         // ステータステキストが入力されていない場合先頭に@ユーザー名を追加する
                         StatusText.Text = "@" + _curPost.ScreenName + " ";
-                        if (_curPost.RetweetedId != null)
-                        {
-                            _reply_to_id = _curPost.RetweetedId.Value;
-                        }
-                        else
-                        {
-                            _reply_to_id = _curPost.StatusId;
-                        }
-                        _reply_to_name = _curPost.ScreenName;
+
+                        var inReplyToStatusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+                        var inReplyToScreenName = this._curPost.ScreenName;
+                        this.inReplyTo = Tuple.Create(inReplyToStatusId, inReplyToScreenName);
                     }
                     else
                     {
@@ -8444,18 +8340,12 @@ namespace OpenTween
                             //1件選んでEnter or DoubleClick
                             if (StatusText.Text.Contains("@" + _curPost.ScreenName + " "))
                             {
-                                if (_reply_to_id != null && _reply_to_name == _curPost.ScreenName)
+                                if (this.inReplyTo?.Item2 == _curPost.ScreenName)
                                 {
                                     //返信先書き換え
-                                    if (_curPost.RetweetedId != null)
-                                    {
-                                        _reply_to_id = _curPost.RetweetedId.Value;
-                                    }
-                                    else
-                                    {
-                                        _reply_to_id = _curPost.StatusId;
-                                    }
-                                    _reply_to_name = _curPost.ScreenName;
+                                    var inReplyToStatusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+                                    var inReplyToScreenName = this._curPost.ScreenName;
+                                    this.inReplyTo = Tuple.Create(inReplyToStatusId, inReplyToScreenName);
                                 }
                                 return;
                             }
@@ -8466,22 +8356,15 @@ namespace OpenTween
                                 {
                                     // 複数リプライ
                                     StatusText.Text = StatusText.Text.Insert(2, "@" + _curPost.ScreenName + " ");
-                                    _reply_to_id = null;
-                                    _reply_to_name = null;
+                                    this.inReplyTo = null;
                                 }
                                 else
                                 {
                                     // 単独リプライ
                                     StatusText.Text = "@" + _curPost.ScreenName + " " + StatusText.Text;
-                                    if (_curPost.RetweetedId != null)
-                                    {
-                                        _reply_to_id = _curPost.RetweetedId.Value;
-                                    }
-                                    else
-                                    {
-                                        _reply_to_id = _curPost.StatusId;
-                                    }
-                                    _reply_to_name = _curPost.ScreenName;
+                                    var inReplyToStatusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+                                    var inReplyToScreenName = this._curPost.ScreenName;
+                                    this.inReplyTo = Tuple.Create(inReplyToStatusId, inReplyToScreenName);
                                 }
                             }
                             else
@@ -8490,8 +8373,7 @@ namespace OpenTween
                                 // 複数リプライ
                                 StatusText.Text = ". @" + _curPost.ScreenName + " " + StatusText.Text;
                                 //StatusText.Text = "@" + _curPost.ScreenName + " " + StatusText.Text;
-                                _reply_to_id = null;
-                                _reply_to_name = null;
+                                this.inReplyTo = null;
                             }
                         }
                         else
@@ -8543,8 +8425,7 @@ namespace OpenTween
                         if (!sTxt.StartsWith(". "))
                         {
                             sTxt = ". " + sTxt;
-                            _reply_to_id = null;
-                            _reply_to_name = null;
+                            this.inReplyTo = null;
                         }
                         for (int cnt = 0; cnt < _curList.SelectedIndices.Count; cnt++)
                         {
@@ -8595,8 +8476,7 @@ namespace OpenTween
                             {
                                 StatusText.Text = ". " + StatusText.Text;
                                 sidx += 2;
-                                _reply_to_id = null;
-                                _reply_to_name = null;
+                                this.inReplyTo = null;
                             }
                             if (sidx > 0)
                             {
@@ -8660,15 +8540,10 @@ namespace OpenTween
                                 StatusText.Text = ids;
                                 StatusText.SelectionStart = ids.Length;
                                 StatusText.Focus();
-                                if (post.RetweetedId != null)
-                                {
-                                    _reply_to_id = post.RetweetedId.Value;
-                                }
-                                else
-                                {
-                                    _reply_to_id = post.StatusId;
-                                }
-                                _reply_to_name = post.ScreenName;
+
+                                var inReplyToStatusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+                                var inReplyToScreenName = this._curPost.ScreenName;
+                                this.inReplyTo = Tuple.Create(inReplyToStatusId, inReplyToScreenName);
                                 return;
                             }
 
@@ -8702,9 +8577,11 @@ namespace OpenTween
         private static bool blink = false;
         private static bool idle = false;
 
-        private void RefreshTasktrayIcon(bool forceRefresh)
+        private async Task RefreshTasktrayIcon(bool forceRefresh)
         {
-            if (_colorize) Colorize();
+            if (_colorize)
+                await this.Colorize();
+
             if (!TimerRefreshIcon.Enabled) return;
             //Static usCheckCnt As int = 0
 
@@ -8790,10 +8667,10 @@ namespace OpenTween
             }
         }
 
-        private void TimerRefreshIcon_Tick(object sender, EventArgs e)
+        private async void TimerRefreshIcon_Tick(object sender, EventArgs e)
         {
             //200ms
-            this.RefreshTasktrayIcon(false);
+            await this.RefreshTasktrayIcon(false);
         }
 
         private void ContextMenuTabProperty_Opening(object sender, CancelEventArgs e)
@@ -8907,11 +8784,9 @@ namespace OpenTween
 
         public void ChangeTabUnreadManage(string tabName, bool isManage)
         {
-            int idx;
-            for (idx = 0; idx < ListTab.TabCount; idx++)
-            {
-                if (ListTab.TabPages[idx].Text == tabName) break;
-            }
+            var idx = this.GetTabPageIndex(tabName);
+            if (idx == -1)
+                return;
 
             _statuses.Tabs[tabName].UnreadManage = isManage;
             if (this._cfgCommon.TabIconDisp)
@@ -9164,9 +9039,20 @@ namespace OpenTween
             //タブ選択（or追加）
             if (!SelectTab(out tabName)) return;
 
-            bool mv = false;
-            bool mk = false;
-            MoveOrCopy(ref mv, ref mk);
+            var tab = this._statuses.Tabs[tabName];
+
+            bool mv;
+            bool mk;
+            if (tab.TabType != MyCommon.TabUsageType.Mute)
+            {
+                this.MoveOrCopy(out mv, out mk);
+            }
+            else
+            {
+                // ミュートタブでは常に MoveMatches を true にする
+                mv = true;
+                mk = false;
+            }
 
             List<string> ids = new List<string>();
             foreach (int idx in _curList.SelectedIndices)
@@ -9189,7 +9075,7 @@ namespace OpenTween
                     fc.MarkMatches = mk;
                     fc.UseRegex = false;
                     fc.FilterByUrl = false;
-                    _statuses.Tabs[tabName].AddFilter(fc);
+                    tab.AddFilter(fc);
                 }
             }
             if (ids.Count != 0)
@@ -9218,13 +9104,22 @@ namespace OpenTween
             if (!this.SelectTab(out tabName))
                 return;
 
-            // フィルタ動作選択ダイアログを表示（移動/コピー, マーク有無）
-            var mv = false;
-            var mk = false;
-            this.MoveOrCopy(ref mv, ref mk);
-
             var currentTab = this._statuses.Tabs[this._curTab.Text];
             var filterTab = this._statuses.Tabs[tabName];
+
+            bool mv;
+            bool mk;
+            if (filterTab.TabType != MyCommon.TabUsageType.Mute)
+            {
+                // フィルタ動作選択ダイアログを表示（移動/コピー, マーク有無）
+                this.MoveOrCopy(out mv, out mk);
+            }
+            else
+            {
+                // ミュートタブでは常に MoveMatches を true にする
+                mv = true;
+                mk = false;
+            }
 
             // 振り分けルールに追加するSource
             var sources = new HashSet<string>();
@@ -9302,7 +9197,7 @@ namespace OpenTween
             while (true);
         }
 
-        private void MoveOrCopy(ref bool move, ref bool mark)
+        private void MoveOrCopy(out bool move, out bool mark)
         {
             {
                 //移動するか？
@@ -9320,6 +9215,10 @@ namespace OpenTween
                     mark = true;
                 else
                     mark = false;
+            }
+            else
+            {
+                mark = false;
             }
         }
         private void CopySTOTMenuItem_Click(object sender, EventArgs e)
@@ -9375,20 +9274,27 @@ namespace OpenTween
             _curList.EnsureVisible(idx);
         }
 
-        private void OpenURLMenuItem_Click(object sender, EventArgs e)
+        private async void OpenURLMenuItem_Click(object sender, EventArgs e)
         {
-            if (PostBrowser.Document.Links.Count > 0)
+            var linkElements = this.PostBrowser.Document.Links.Cast<HtmlElement>()
+                .Where(x => x.GetAttribute("className") != "tweet-quote-link") // 引用ツイートで追加されたリンクを除く
+                .ToArray();
+
+            if (linkElements.Length > 0)
             {
                 UrlDialog.ClearUrl();
 
                 string openUrlStr = "";
 
-                if (PostBrowser.Document.Links.Count == 1)
+                if (linkElements.Length == 1)
                 {
+                    // ツイートに含まれる URL が 1 つのみの場合
+                    //   => OpenURL ダイアログを表示せずにリンクを開く
+
                     string urlStr = "";
                     try
                     {
-                        urlStr = MyCommon.IDNEncode(PostBrowser.Document.Links[0].GetAttribute("href"));
+                        urlStr = MyCommon.IDNEncode(linkElements[0].GetAttribute("href"));
                     }
                     catch (ArgumentException)
                     {
@@ -9401,10 +9307,16 @@ namespace OpenTween
                     }
                     if (string.IsNullOrEmpty(urlStr)) return;
                     openUrlStr = MyCommon.urlEncodeMultibyteChar(urlStr);
+
+                    // Ctrl+E で呼ばれた場合を考慮し isReverseSettings の判定を行わない
+                    await this.OpenUriAsync(new Uri(openUrlStr));
                 }
                 else
                 {
-                    foreach (HtmlElement linkElm in PostBrowser.Document.Links)
+                    // ツイートに含まれる URL が複数ある場合
+                    //   => OpenURL を表示しユーザーが選択したリンクを開く
+
+                    foreach (var linkElm in linkElements)
                     {
                         string urlStr = "";
                         string linkText = "";
@@ -9433,6 +9345,9 @@ namespace OpenTween
                         if (UrlDialog.ShowDialog() == DialogResult.OK)
                         {
                             openUrlStr = UrlDialog.SelectedUrl;
+
+                            // Ctrlを押しながらリンクを開いた場合は、設定と逆の動作をするフラグを true としておく
+                            await this.OpenUriAsync(new Uri(openUrlStr), MyCommon.IsKeyDown(Keys.Control));
                         }
                     }
                     catch (Exception)
@@ -9440,28 +9355,6 @@ namespace OpenTween
                         return;
                     }
                     this.TopMost = this._cfgCommon.AlwaysTop;
-                }
-                if (string.IsNullOrEmpty(openUrlStr)) return;
-
-                if (openUrlStr.StartsWith("http://twitter.com/search?q=") ||
-                    openUrlStr.StartsWith("https://twitter.com/search?q="))
-                {
-                    //ハッシュタグの場合は、タブで開く
-                    string urlStr = Uri.UnescapeDataString(openUrlStr);
-                    string hash = urlStr.Substring(urlStr.IndexOf("#"));
-                    HashSupl.AddItem(hash);
-                    HashMgr.AddHashToHistory(hash.Trim(), false);
-                    AddNewTabForSearch(hash);
-                    return;
-                }
-                else
-                {
-                    Match m = Regex.Match(openUrlStr, "^https?://twitter.com/(#!/)?(?<ScreenName>[a-zA-Z0-9_]+)$");
-                    if (this._cfgCommon.OpenUserTimeline && m.Success && IsTwitterId(m.Result("${ScreenName}")))
-                        this.AddNewTabForUserTimeline(m.Result("${ScreenName}"));
-                    else
-                        OpenUriAsync(openUrlStr);
-                    return;
                 }
             }
         }
@@ -9815,14 +9708,8 @@ namespace OpenTween
             }
 
             // リプライ先ステータスIDの指定がない場合は指定しない
-            if (_reply_to_id == null) return;
-
-            // リプライ先ユーザー名がない場合も指定しない
-            if (string.IsNullOrEmpty(_reply_to_name))
-            {
-                _reply_to_id = null;
+            if (this.inReplyTo == null)
                 return;
-            }
 
             // 通常Reply
             // 次の条件を満たす場合に in_reply_to_status_id 指定
@@ -9832,22 +9719,21 @@ namespace OpenTween
 
             if (m != null)
             {
+                var inReplyToScreenName = this.inReplyTo.Item2;
                 if (StatusText.StartsWith("@"))
                 {
-                    if (StatusText.StartsWith("@" + _reply_to_name)) return;
+                    if (StatusText.StartsWith("@" + inReplyToScreenName)) return;
                 }
                 else
                 {
                     foreach (Match mid in m)
                     {
-                        if (StatusText.Contains("QT " + mid.Result("${id}") + ":") && mid.Result("${id}") == "@" + _reply_to_name) return;
+                        if (StatusText.Contains("RT " + mid.Result("${id}") + ":") && mid.Result("${id}") == "@" + inReplyToScreenName) return;
                     }
                 }
             }
 
-            _reply_to_id = null;
-            _reply_to_name = null;
-
+            this.inReplyTo = null;
         }
 
         private void TweenMain_Resize(object sender, EventArgs e)
@@ -9924,21 +9810,36 @@ namespace OpenTween
 
         private void SplitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
         {
-            if (this.WindowState == FormWindowState.Normal && !_initialLayout)
+            if (this._initialLayout)
+                return;
+
+            int splitterDistance;
+            switch (this.WindowState)
             {
-                _mySpDis = SplitContainer1.SplitterDistance;
-                if (StatusText.Multiline) _mySpDis2 = StatusText.Height;
-                _modifySettingLocal = true;
+                case FormWindowState.Normal:
+                    splitterDistance = this.SplitContainer1.SplitterDistance;
+                    break;
+                case FormWindowState.Maximized:
+                    // 最大化時は、通常時のウィンドウサイズに換算した SplitterDistance を算出する
+                    var normalContainerHeight = this._mySize.Height - this.ToolStripContainer1.TopToolStripPanel.Height - this.ToolStripContainer1.BottomToolStripPanel.Height;
+                    splitterDistance = this.SplitContainer1.SplitterDistance - (this.SplitContainer1.Height - normalContainerHeight);
+                    splitterDistance = Math.Min(splitterDistance, normalContainerHeight - this.SplitContainer1.SplitterWidth - this.SplitContainer1.Panel2MinSize);
+                    break;
+                default:
+                    return;
             }
+
+            this._mySpDis = splitterDistance;
+            this._modifySettingLocal = true;
         }
 
-        private void doRepliedStatusOpen()
+        private async Task doRepliedStatusOpen()
         {
             if (this.ExistCurrentPost && _curPost.InReplyToUser != null && _curPost.InReplyToStatusId != null)
             {
                 if (MyCommon.IsKeyDown(Keys.Shift))
                 {
-                    OpenUriAsync(MyCommon.GetStatusUrl(_curPost.InReplyToUser, _curPost.InReplyToStatusId.Value));
+                    await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(_curPost.InReplyToUser, _curPost.InReplyToStatusId.Value));
                     return;
                 }
                 if (_statuses.ContainsKey(_curPost.InReplyToStatusId.Value))
@@ -9955,14 +9856,14 @@ namespace OpenTween
                         MessageBox.Show(repPost.ScreenName + " / " + repPost.Nickname + "   (" + repPost.CreatedAt.ToString() + ")" + Environment.NewLine + repPost.TextFromApi);
                         return;
                     }
-                    OpenUriAsync(MyCommon.GetStatusUrl(_curPost.InReplyToUser, _curPost.InReplyToStatusId.Value));
+                    await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(_curPost.InReplyToUser, _curPost.InReplyToStatusId.Value));
                 }
             }
         }
 
-        private void RepliedStatusOpenMenuItem_Click(object sender, EventArgs e)
+        private async void RepliedStatusOpenMenuItem_Click(object sender, EventArgs e)
         {
-            doRepliedStatusOpen();
+            await this.doRepliedStatusOpen();
         }
 
         /// <summary>
@@ -10070,11 +9971,11 @@ namespace OpenTween
             }
         }
 
-        private void IconNameToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void IconNameToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (_curPost == null) return;
             string name = _curPost.ImageUrl;
-            OpenUriAsync(name.Remove(name.LastIndexOf("_normal"), 7)); // "_normal".Length
+            await this.OpenUriInBrowserAsync(name.Remove(name.LastIndexOf("_normal"), 7)); // "_normal".Length
         }
 
         private async void ReloadIconToolStripMenuItem_Click(object sender, EventArgs e)
@@ -10140,9 +10041,13 @@ namespace OpenTween
 
         private void SplitContainer2_Panel2_Resize(object sender, EventArgs e)
         {
-            this.StatusText.Multiline = this.SplitContainer2.Panel2.Height > this.SplitContainer2.Panel2MinSize + 2;
-            MultiLineMenuItem.Checked = this.StatusText.Multiline;
-            _modifySettingLocal = true;
+            var multiline = this.SplitContainer2.Panel2.Height > this.SplitContainer2.Panel2MinSize + 2;
+            if (multiline != this.StatusText.Multiline)
+            {
+                this.StatusText.Multiline = multiline;
+                MultiLineMenuItem.Checked = multiline;
+                _modifySettingLocal = true;
+            }
         }
 
         private void StatusText_MultilineChanged(object sender, EventArgs e)
@@ -10581,7 +10486,7 @@ namespace OpenTween
             }
         }
 
-        private void doSearchToolStrip(string url)
+        private async Task doSearchToolStrip(string url)
         {
             //発言詳細で「選択文字列で検索」（選択文字列取得）
             string _selText = this.PostBrowser.GetSelectedText();
@@ -10596,7 +10501,7 @@ namespace OpenTween
                 }
 
                 string tmp = string.Format(url, Uri.EscapeDataString(_selText));
-                OpenUriAsync(tmp);
+                await this.OpenUriInBrowserAsync(tmp);
             }
         }
 
@@ -10606,39 +10511,35 @@ namespace OpenTween
             PostBrowser.Document.ExecCommand("SelectAll", false, null);
         }
 
-        private void SearchWikipediaContextMenuItem_Click(object sender, EventArgs e)
+        private async void SearchWikipediaContextMenuItem_Click(object sender, EventArgs e)
         {
-            doSearchToolStrip(Properties.Resources.SearchItem1Url);
+            await this.doSearchToolStrip(Properties.Resources.SearchItem1Url);
         }
 
-        private void SearchGoogleContextMenuItem_Click(object sender, EventArgs e)
+        private async void SearchGoogleContextMenuItem_Click(object sender, EventArgs e)
         {
-            doSearchToolStrip(Properties.Resources.SearchItem2Url);
+            await this.doSearchToolStrip(Properties.Resources.SearchItem2Url);
         }
 
-        private void SearchPublicSearchContextMenuItem_Click(object sender, EventArgs e)
+        private async void SearchPublicSearchContextMenuItem_Click(object sender, EventArgs e)
         {
-            doSearchToolStrip(Properties.Resources.SearchItem4Url);
+            await this.doSearchToolStrip(Properties.Resources.SearchItem4Url);
         }
 
         private void UrlCopyContextMenuItem_Click(object sender, EventArgs e)
         {
             try
             {
-                MatchCollection mc = Regex.Matches(this.PostBrowser.DocumentText, @"<a[^>]*href=""(?<url>" + this._postBrowserStatusText.Replace(".", @"\.") + @")""[^>]*title=""(?<title>https?://[^""]+)""", RegexOptions.IgnoreCase);
-                foreach (Match m in mc)
+                foreach (var link in this.PostBrowser.Document.Links.Cast<HtmlElement>())
                 {
-                    if (m.Groups["url"].Value == this._postBrowserStatusText)
+                    if (link.GetAttribute("href") == this._postBrowserStatusText)
                     {
-                        Clipboard.SetDataObject(m.Groups["title"].Value, false, 5, 100);
-                        break;
+                        Clipboard.SetDataObject(link.GetAttribute("title"), false, 5, 100);
+                        return;
                     }
                 }
-                if (mc.Count == 0)
-                {
-                    Clipboard.SetDataObject(this._postBrowserStatusText, false, 5, 100);
-                }
-                //Clipboard.SetDataObject(this._postBrowserStatusText, false, 5, 100);
+
+                Clipboard.SetDataObject(this._postBrowserStatusText, false, 5, 100);
             }
             catch (Exception ex)
             {
@@ -10817,7 +10718,7 @@ namespace OpenTween
                 {
                     var lines = Encoding.Unicode.GetString(stream.ToArray()).TrimEnd('\0').Split('\n');
                     if (lines.Length < 2)
-                        throw new ArgumentException("不正な text/x-moz-url フォーマットです", "data");
+                        throw new ArgumentException("不正な text/x-moz-url フォーマットです", nameof(data));
 
                     return new Tuple<string, string>(lines[0], lines[1]);
                 }
@@ -10831,7 +10732,7 @@ namespace OpenTween
                 {
                     var lines = Encoding.Unicode.GetString(stream.ToArray()).TrimEnd('\0').Split('\0');
                     if (lines.Length < 2)
-                        throw new ArgumentException("不正な IESiteModeToUrl フォーマットです", "data");
+                        throw new ArgumentException("不正な IESiteModeToUrl フォーマットです", nameof(data));
 
                     return new Tuple<string, string>(lines[0], lines[1]);
                 }
@@ -10891,7 +10792,69 @@ namespace OpenTween
             return nw;
         }
 
-        public Task OpenUriAsync(string UriString)
+        public async Task OpenUriAsync(Uri uri, bool isReverseSettings = false)
+        {
+            var uriStr = uri.AbsoluteUri;
+
+            // OpenTween 内部で使用する URL
+            if (uri.Authority == "opentween")
+            {
+                await this.OpenInternalUriAsync(uri);
+                return;
+            }
+
+            // ハッシュタグを含む Twitter 検索
+            if (uri.Host == "twitter.com" && uri.AbsolutePath == "/search" && uri.Query.Contains("q=%23"))
+            {
+                // ハッシュタグの場合は、タブで開く
+                var unescapedQuery = Uri.UnescapeDataString(uri.Query);
+                var pos = unescapedQuery.IndexOf('#');
+                if (pos == -1) return;
+
+                var hash = unescapedQuery.Substring(pos);
+                this.HashSupl.AddItem(hash);
+                this.HashMgr.AddHashToHistory(hash.Trim(), false);
+                this.AddNewTabForSearch(hash);
+                return;
+            }
+
+            // ユーザープロフィールURL
+            // フラグが立っている場合は設定と逆の動作をする
+            if( this._cfgCommon.OpenUserTimeline && !isReverseSettings ||
+                !this._cfgCommon.OpenUserTimeline && isReverseSettings )
+            {
+                var userUriMatch = Regex.Match(uriStr, "^https?://twitter.com/(#!/)?(?<ScreenName>[a-zA-Z0-9_]+)$");
+                if (userUriMatch.Success)
+                {
+                    var screenName = userUriMatch.Groups["ScreenName"].Value;
+                    if (this.IsTwitterId(screenName))
+                    {
+                        this.AddNewTabForUserTimeline(screenName);
+                        return;
+                    }
+                }
+            }
+
+            // どのパターンにも該当しないURL
+            await this.OpenUriInBrowserAsync(uriStr);
+        }
+
+        /// <summary>
+        /// OpenTween 内部の機能を呼び出すための URL を開きます
+        /// </summary>
+        private async Task OpenInternalUriAsync(Uri uri)
+        {
+            // ツイートを開く (//opentween/status/:status_id)
+            var match = Regex.Match(uri.AbsolutePath, @"^/status/(\d+)$");
+            if (match.Success)
+            {
+                var statusId = long.Parse(match.Groups[1].Value);
+                await this.OpenRelatedTab(statusId);
+                return;
+            }
+        }
+
+        public Task OpenUriInBrowserAsync(string UriString)
         {
             return Task.Run(() =>
             {
@@ -11051,8 +11014,11 @@ namespace OpenTween
         {
             try
             {
-                PostBrowser.Url = new Uri("about:blank");
-                PostBrowser.DocumentText = "";       //発言詳細部初期化
+                using (ControlTransaction.Update(this.PostBrowser))
+                {
+                    PostBrowser.Url = new Uri("about:blank");
+                    PostBrowser.DocumentText = "";       //発言詳細部初期化
+                }
             }
             catch (Exception)
             {
@@ -11146,7 +11112,7 @@ namespace OpenTween
         private async Task doGetFollowersMenu()
         {
             await this.RefreshFollowerIdsAsync();
-            DispSelectedPost(true);
+            await this.DispSelectedPost(true);
         }
 
         private async void GetFollowersAllToolStripMenuItem_Click(object sender, EventArgs e)
@@ -11154,33 +11120,7 @@ namespace OpenTween
             await this.doGetFollowersMenu();
         }
 
-        private void doReTweetUnofficial()
-        {
-            //RT @id:内容
-            if (this.ExistCurrentPost)
-            {
-                if (_curPost.IsDm ||
-                    !StatusText.Enabled) return;
-
-                if (_curPost.IsProtect)
-                {
-                    MessageBox.Show("Protected.");
-                    return;
-                }
-                string rtdata = _curPost.Text;
-                rtdata = CreateRetweetUnofficial(rtdata, this.StatusText.Multiline);
-
-                this._reply_to_id = null;
-                this._reply_to_name = null;
-
-                StatusText.Text = "RT @" + _curPost.ScreenName + ": " + rtdata;
-
-                StatusText.SelectionStart = 0;
-                StatusText.Focus();
-            }
-        }
-
-        private void ReTweetStripMenuItem_Click(object sender, EventArgs e)
+        private void ReTweetUnofficialStripMenuItem_Click(object sender, EventArgs e)
         {
             doReTweetUnofficial();
         }
@@ -11245,20 +11185,26 @@ namespace OpenTween
             }
         }
 
-        private async void ReTweetOriginalStripMenuItem_Click(object sender, EventArgs e)
+        private async void ReTweetStripMenuItem_Click(object sender, EventArgs e)
         {
             await this.doReTweetOfficial(true);
         }
 
-        private async Task FavoritesRetweetOriginal()
+        private async Task FavoritesRetweetOfficial()
         {
             if (!this.ExistCurrentPost) return;
             _DoFavRetweetFlags = true;
-            await this.doReTweetOfficial(true);
+            var retweetTask = this.doReTweetOfficial(true);
             if (_DoFavRetweetFlags)
             {
                 _DoFavRetweetFlags = false;
-                await this.FavoriteChange(true, false);
+                var favoriteTask = this.FavoriteChange(true, false);
+
+                await Task.WhenAll(retweetTask, favoriteTask);
+            }
+            else
+            {
+                await retweetTask;
             }
         }
 
@@ -11267,12 +11213,14 @@ namespace OpenTween
             if (this.ExistCurrentPost && !_curPost.IsDm)
             {
                 _DoFavRetweetFlags = true;
-                await this.FavoriteChange(true);
+                var favoriteTask = this.FavoriteChange(true);
                 if (!_curPost.IsProtect && _DoFavRetweetFlags)
                 {
                     _DoFavRetweetFlags = false;
                     doReTweetUnofficial();
                 }
+
+                await favoriteTask;
             }
         }
 
@@ -11306,10 +11254,10 @@ namespace OpenTween
             return WebUtility.HtmlDecode(statusHtml);
         }
 
-        private void DumpPostClassToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void DumpPostClassToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (_curPost != null)
-                DispSelectedPost(true);
+                await this.DispSelectedPost(true);
         }
 
         private void MenuItemHelp_DropDownOpening(object sender, EventArgs e)
@@ -11360,295 +11308,265 @@ namespace OpenTween
             await UrlConvertAsync(MyCommon.UrlConverter.Jmp);
         }
 
-
-        private void GetApiInfo_Dowork(object sender, DoWorkEventArgs e)
+        private async void ApiUsageInfoMenuItem_Click(object sender, EventArgs e)
         {
-            e.Result = tw.GetInfoApi();
-        }
+            TwitterApiStatus apiStatus;
 
-        private void ApiUsageInfoMenuItem_Click(object sender, EventArgs e)
-        {
-            var result = false;
-
-            using (var dlg = new FormInfo(this, Properties.Resources.ApiInfo6, GetApiInfo_Dowork))
+            using (var dialog = new WaitingDialog(Properties.Resources.ApiInfo6))
             {
-                dlg.ShowDialog();
+                var cancellationToken = dialog.EnableCancellation();
 
-                result = dlg.Result != null;
-            }
-
-            if (result)
-            {
-                using (var apiDlg = new ApiInfoDialog())
+                try
                 {
-                    apiDlg.ShowDialog();
+                    var task = Task.Run(() => this.tw.GetInfoApi());
+                    apiStatus = await dialog.WaitForAsync(this, task);
+                }
+                catch (WebApiException)
+                {
+                    apiStatus = null;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                if (apiStatus == null)
+                {
+                    MessageBox.Show(Properties.Resources.ApiInfo5, Properties.Resources.ApiInfo4, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
             }
-            else
+
+            using (var apiDlg = new ApiInfoDialog())
             {
-                MessageBox.Show(Properties.Resources.ApiInfo5, Properties.Resources.ApiInfo4, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                apiDlg.ShowDialog(this);
             }
-}
-
-        private void FollowCommandMenuItem_Click(object sender, EventArgs e)
-        {
-            string id = "";
-            if (_curPost != null) id = _curPost.ScreenName;
-            FollowCommand(id);
         }
 
-        private void FollowCommand_DoWork(object sender, DoWorkEventArgs e)
+        private async void FollowCommandMenuItem_Click(object sender, EventArgs e)
         {
-            FollowRemoveCommandArgs arg = (FollowRemoveCommandArgs)e.Argument;
-            e.Result = arg.tw.PostFollowCommand(arg.id);
+            var id = _curPost?.ScreenName ?? "";
+
+            await this.FollowCommand(id);
         }
 
-        private void FollowCommand(string id)
+        private async Task FollowCommand(string id)
         {
-            using (InputTabName inputName = new InputTabName())
+            using (var inputName = new InputTabName())
             {
                 inputName.FormTitle = "Follow";
                 inputName.FormDescription = Properties.Resources.FRMessage1;
                 inputName.TabName = id;
-                if (inputName.ShowDialog() == DialogResult.OK &&
-                    !string.IsNullOrEmpty(inputName.TabName.Trim()))
+
+                if (inputName.ShowDialog(this) != DialogResult.OK)
+                    return;
+                if (string.IsNullOrWhiteSpace(inputName.TabName))
+                    return;
+
+                id = inputName.TabName.Trim();
+            }
+
+            using (var dialog = new WaitingDialog(Properties.Resources.FollowCommandText1))
+            {
+                try
                 {
-                    FollowRemoveCommandArgs arg = new FollowRemoveCommandArgs();
-                    arg.tw = tw;
-                    arg.id = inputName.TabName.Trim();
-                    using (FormInfo _info = new FormInfo(this, Properties.Resources.FollowCommandText1,
-                                                         FollowCommand_DoWork,
-                                                         null,
-                                                         arg))
-                    {
-                        _info.ShowDialog();
-                        string ret = (string)_info.Result;
-                        if (!string.IsNullOrEmpty(ret))
-                            MessageBox.Show(Properties.Resources.FRMessage2 + ret);
-                        else
-                            MessageBox.Show(Properties.Resources.FRMessage3);
-                    }
+                    var task = Task.Run(() => this.tw.PostFollowCommand(id));
+                    await dialog.WaitForAsync(this, task);
+                }
+                catch (WebApiException ex)
+                {
+                    MessageBox.Show(Properties.Resources.FRMessage2 + ex.Message);
+                    return;
                 }
             }
+
+            MessageBox.Show(Properties.Resources.FRMessage3);
         }
 
-        private void RemoveCommandMenuItem_Click(object sender, EventArgs e)
+        private async void RemoveCommandMenuItem_Click(object sender, EventArgs e)
         {
-            string id = "";
-            if (_curPost != null) id = _curPost.ScreenName;
-            RemoveCommand(id, false);
+            var id = _curPost?.ScreenName ?? "";
+
+            await this.RemoveCommand(id, false);
         }
 
-        private class FollowRemoveCommandArgs
+        private async Task RemoveCommand(string id, bool skipInput)
         {
-            public Twitter tw;
-            public string id;
-        }
-
-        private void RemoveCommand_DoWork(object sender , DoWorkEventArgs e)
-        {
-            FollowRemoveCommandArgs arg = (FollowRemoveCommandArgs)e.Argument;
-            e.Result = arg.tw.PostRemoveCommand(arg.id);
-        }
-
-        private void RemoveCommand(string id, bool skipInput)
-        {
-            FollowRemoveCommandArgs arg = new FollowRemoveCommandArgs();
-            arg.tw = tw;
-            arg.id = id;
             if (!skipInput)
             {
-                using (InputTabName inputName = new InputTabName())
+                using (var inputName = new InputTabName())
                 {
                     inputName.FormTitle = "Unfollow";
                     inputName.FormDescription = Properties.Resources.FRMessage1;
                     inputName.TabName = id;
-                    if (inputName.ShowDialog() == DialogResult.OK &&
-                        !string.IsNullOrEmpty(inputName.TabName.Trim()))
-                    {
-                        arg.tw = tw;
-                        arg.id = inputName.TabName.Trim();
-                    }
-                    else
-                    {
+
+                    if (inputName.ShowDialog(this) != DialogResult.OK)
                         return;
-                    }
+                    if (string.IsNullOrWhiteSpace(inputName.TabName))
+                        return;
+
+                    id = inputName.TabName.Trim();
                 }
             }
 
-            using (FormInfo _info = new FormInfo(this, Properties.Resources.RemoveCommandText1,
-                                                 RemoveCommand_DoWork,
-                                                 null,
-                                                 arg))
+            using (var dialog = new WaitingDialog(Properties.Resources.RemoveCommandText1))
             {
-                _info.ShowDialog();
-                string ret = (string)_info.Result;
-                if (!string.IsNullOrEmpty(ret))
-                    MessageBox.Show(Properties.Resources.FRMessage2 + ret);
-                else
-                    MessageBox.Show(Properties.Resources.FRMessage3);
-            }
-        }
-
-        private void FriendshipMenuItem_Click(object sender, EventArgs e)
-        {
-            string id = "";
-            if (_curPost != null)
-                id = _curPost.ScreenName;
-
-            ShowFriendship(id);
-        }
-
-        private class ShowFriendshipArgs
-        {
-            public Twitter tw;
-            public class FriendshipInfo
-            {
-                public string id = "";
-                public bool isFollowing = false;
-                public bool isFollowed = false;
-                public FriendshipInfo(string id)
+                try
                 {
-                    this.id = id;
+                    var task = Task.Run(() => this.tw.PostRemoveCommand(id));
+                    await dialog.WaitForAsync(this, task);
                 }
-            }
-            public List<FriendshipInfo> ids = new List<FriendshipInfo>();
-        }
-
-        private void ShowFriendship_DoWork(object sender, DoWorkEventArgs e)
-        {
-            ShowFriendshipArgs arg = (ShowFriendshipArgs)e.Argument;
-            string result = "";
-            foreach (ShowFriendshipArgs.FriendshipInfo fInfo in arg.ids)
-            {
-                string rt = arg.tw.GetFriendshipInfo(fInfo.id, ref fInfo.isFollowing, ref fInfo.isFollowed);
-                if (!string.IsNullOrEmpty(rt))
+                catch (WebApiException ex)
                 {
-                    if (string.IsNullOrEmpty(result)) result = rt;
+                    MessageBox.Show(Properties.Resources.FRMessage2 + ex.Message);
+                    return;
                 }
             }
-            e.Result = result;
+
+            MessageBox.Show(Properties.Resources.FRMessage3);
         }
 
-        private void ShowFriendship(string id)
+        private async void FriendshipMenuItem_Click(object sender, EventArgs e)
         {
-            ShowFriendshipArgs args = new ShowFriendshipArgs();
-            args.tw = tw;
-            using (InputTabName inputName = new InputTabName())
+            var id = _curPost?.ScreenName ?? "";
+
+            await this.ShowFriendship(id);
+        }
+
+        private async Task ShowFriendship(string id)
+        {
+            using (var inputName = new InputTabName())
             {
                 inputName.FormTitle = "Show Friendships";
                 inputName.FormDescription = Properties.Resources.FRMessage1;
                 inputName.TabName = id;
-                if (inputName.ShowDialog() == DialogResult.OK &&
-                    !string.IsNullOrEmpty(inputName.TabName.Trim()))
+
+                if (inputName.ShowDialog(this) != DialogResult.OK)
+                    return;
+                if (string.IsNullOrWhiteSpace(inputName.TabName))
+                    return;
+
+                id = inputName.TabName.Trim();
+            }
+
+            bool isFollowing, isFollowed;
+
+            using (var dialog = new WaitingDialog(Properties.Resources.ShowFriendshipText1))
+            {
+                var cancellationToken = dialog.EnableCancellation();
+
+                try
                 {
-                    string ret = "";
-                    args.ids.Add(new ShowFriendshipArgs.FriendshipInfo(inputName.TabName.Trim()));
-                    using (FormInfo _info = new FormInfo(this, Properties.Resources.ShowFriendshipText1,
-                                                         ShowFriendship_DoWork,
-                                                         null,
-                                                         args))
+                    var task = Task.Run(() => this.tw.GetFriendshipInfo(id));
+                    var friendship = await dialog.WaitForAsync(this, task);
+
+                    isFollowing = friendship.Relationship.Source.Following;
+                    isFollowed = friendship.Relationship.Source.FollowedBy;
+                }
+                catch (WebApiException ex)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        MessageBox.Show(ex.Message);
+                    return;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+            }
+
+            string result = "";
+            if (isFollowing)
+            {
+                result = Properties.Resources.GetFriendshipInfo1 + System.Environment.NewLine;
+            }
+            else
+            {
+                result = Properties.Resources.GetFriendshipInfo2 + System.Environment.NewLine;
+            }
+            if (isFollowed)
+            {
+                result += Properties.Resources.GetFriendshipInfo3;
+            }
+            else
+            {
+                result += Properties.Resources.GetFriendshipInfo4;
+            }
+            result = id + Properties.Resources.GetFriendshipInfo5 + System.Environment.NewLine + result;
+            MessageBox.Show(result);
+        }
+
+        private async Task ShowFriendship(string[] ids)
+        {
+            foreach (string id in ids)
+            {
+                bool isFollowing, isFollowed;
+
+                using (var dialog = new WaitingDialog(Properties.Resources.ShowFriendshipText1))
+                {
+                    var cancellationToken = dialog.EnableCancellation();
+
+                    try
                     {
-                        _info.ShowDialog();
-                        ret = (string)_info.Result;
+                        var task = Task.Run(() => this.tw.GetFriendshipInfo(id));
+                        var friendship = await dialog.WaitForAsync(this, task);
+
+                        isFollowing = friendship.Relationship.Source.Following;
+                        isFollowed = friendship.Relationship.Source.FollowedBy;
                     }
-                    string result = "";
-                    if (string.IsNullOrEmpty(ret))
+                    catch (WebApiException ex)
                     {
-                        if (args.ids[0].isFollowing)
-                        {
-                            result = Properties.Resources.GetFriendshipInfo1 + System.Environment.NewLine;
-                        }
-                        else
-                        {
-                            result = Properties.Resources.GetFriendshipInfo2 + System.Environment.NewLine;
-                        }
-                        if (args.ids[0].isFollowed)
-                        {
-                            result += Properties.Resources.GetFriendshipInfo3;
-                        }
-                        else
-                        {
-                            result += Properties.Resources.GetFriendshipInfo4;
-                        }
-                        result = args.ids[0].id + Properties.Resources.GetFriendshipInfo5 + System.Environment.NewLine + result;
+                        if (!cancellationToken.IsCancellationRequested)
+                            MessageBox.Show(ex.Message);
+                        return;
                     }
-                    else
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+                }
+
+                string result = "";
+                string ff = "";
+
+                ff = "  ";
+                if (isFollowing)
+                {
+                    ff += Properties.Resources.GetFriendshipInfo1;
+                }
+                else
+                {
+                    ff += Properties.Resources.GetFriendshipInfo2;
+                }
+
+                ff += System.Environment.NewLine + "  ";
+                if (isFollowed)
+                {
+                    ff += Properties.Resources.GetFriendshipInfo3;
+                }
+                else
+                {
+                    ff += Properties.Resources.GetFriendshipInfo4;
+                }
+                result += id + Properties.Resources.GetFriendshipInfo5 + System.Environment.NewLine + ff;
+                if (isFollowing)
+                {
+                    if (MessageBox.Show(
+                        Properties.Resources.GetFriendshipInfo7 + System.Environment.NewLine + result, Properties.Resources.GetFriendshipInfo8,
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button2) == DialogResult.Yes)
                     {
-                        result = ret;
+                        await this.RemoveCommand(id, true);
                     }
+                }
+                else
+                {
                     MessageBox.Show(result);
                 }
             }
         }
 
-        private void ShowFriendship(string[] ids)
+        private async void OwnStatusMenuItem_Click(object sender, EventArgs e)
         {
-            foreach (string id in ids)
-            {
-                string ret = "";
-                ShowFriendshipArgs args = new ShowFriendshipArgs();
-                args.tw = tw;
-                args.ids.Add(new ShowFriendshipArgs.FriendshipInfo(id.Trim()));
-                using (FormInfo _info = new FormInfo(this, Properties.Resources.ShowFriendshipText1,
-                                                     ShowFriendship_DoWork,
-                                                     null,
-                                                     args))
-                {
-                    _info.ShowDialog();
-                    ret = (string)_info.Result;
-                }
-                string result = "";
-                ShowFriendshipArgs.FriendshipInfo fInfo = args.ids[0];
-                string ff = "";
-                if (string.IsNullOrEmpty(ret))
-                {
-                    ff = "  ";
-                    if (fInfo.isFollowing)
-                    {
-                        ff += Properties.Resources.GetFriendshipInfo1;
-                    }
-                    else
-                    {
-                        ff += Properties.Resources.GetFriendshipInfo2;
-                    }
-
-                    ff += System.Environment.NewLine + "  ";
-                    if (fInfo.isFollowed)
-                    {
-                        ff += Properties.Resources.GetFriendshipInfo3;
-                    }
-                    else
-                    {
-                        ff += Properties.Resources.GetFriendshipInfo4;
-                    }
-                    result += fInfo.id + Properties.Resources.GetFriendshipInfo5 + System.Environment.NewLine + ff;
-                    if (fInfo.isFollowing)
-                    {
-                        if (MessageBox.Show(
-                            Properties.Resources.GetFriendshipInfo7 + System.Environment.NewLine + result, Properties.Resources.GetFriendshipInfo8,
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Question,
-                            MessageBoxDefaultButton.Button2) == DialogResult.Yes)
-                        {
-                            RemoveCommand(fInfo.id, true);
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show(result);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show(ret);
-                }
-            }
-        }
-
-        private void OwnStatusMenuItem_Click(object sender, EventArgs e)
-        {
-            doShowUserStatus(tw.Username, false);
+            await this.doShowUserStatus(tw.Username, false);
             //if (!string.IsNullOrEmpty(tw.UserInfoXml))
             //{
             //    doShowUserStatus(tw.Username, false);
@@ -11680,25 +11598,28 @@ namespace OpenTween
                 return null;
         }
 
-        private void FollowContextMenuItem_Click(object sender, EventArgs e)
+        private async void FollowContextMenuItem_Click(object sender, EventArgs e)
         {
             string name = GetUserId();
-            if (name != null) FollowCommand(name);
+            if (name != null)
+                await this.FollowCommand(name);
         }
 
-        private void RemoveContextMenuItem_Click(object sender, EventArgs e)
+        private async void RemoveContextMenuItem_Click(object sender, EventArgs e)
         {
             string name = GetUserId();
-            if (name != null) RemoveCommand(name, false);
+            if (name != null)
+                await this.RemoveCommand(name, false);
         }
 
-        private void FriendshipContextMenuItem_Click(object sender, EventArgs e)
+        private async void FriendshipContextMenuItem_Click(object sender, EventArgs e)
         {
             string name = GetUserId();
-            if (name != null) ShowFriendship(name);
+            if (name != null)
+                await this.ShowFriendship(name);
         }
 
-        private void FriendshipAllMenuItem_Click(object sender, EventArgs e)
+        private async void FriendshipAllMenuItem_Click(object sender, EventArgs e)
         {
             MatchCollection ma = Regex.Matches(this.PostBrowser.DocumentText, @"href=""https?://twitter.com/(#!/)?(?<ScreenName>[a-zA-Z0-9_]+)(/status(es)?/[0-9]+)?""");
             List<string> ids = new List<string>();
@@ -11709,13 +11630,15 @@ namespace OpenTween
                     ids.Add(mu.Result("${ScreenName}"));
                 }
             }
-            ShowFriendship(ids.ToArray());
+
+            await this.ShowFriendship(ids.ToArray());
         }
 
-        private void ShowUserStatusContextMenuItem_Click(object sender, EventArgs e)
+        private async void ShowUserStatusContextMenuItem_Click(object sender, EventArgs e)
         {
             string name = GetUserId();
-            if (name != null) ShowUserStatus(name);
+            if (name != null)
+                await this.ShowUserStatus(name);
         }
 
         private void SearchPostsDetailToolStripMenuItem_Click(object sender, EventArgs e)
@@ -11740,10 +11663,8 @@ namespace OpenTween
             _modifySettingCommon = true;
         }
 
-        private void doQuote()
+        private void doQuoteOfficial()
         {
-            //QT @id:内容
-            //返信先情報付加
             if (this.ExistCurrentPost)
             {
                 if (_curPost.IsDm ||
@@ -11754,19 +11675,38 @@ namespace OpenTween
                     MessageBox.Show("Protected.");
                     return;
                 }
+
+                StatusText.Text = " " + MyCommon.GetStatusUrl(_curPost);
+
+                this.inReplyTo = null;
+
+                StatusText.SelectionStart = 0;
+                StatusText.Focus();
+            }
+        }
+
+        private void doReTweetUnofficial()
+        {
+            //RT @id:内容
+            if (this.ExistCurrentPost)
+            {
+                if (_curPost.IsDm || !StatusText.Enabled)
+                    return;
+
+                if (_curPost.IsProtect)
+                {
+                    MessageBox.Show("Protected.");
+                    return;
+                }
                 string rtdata = _curPost.Text;
                 rtdata = CreateRetweetUnofficial(rtdata, this.StatusText.Multiline);
 
-                StatusText.Text = " QT @" + _curPost.ScreenName + ": " + rtdata;
-                if (_curPost.RetweetedId == null)
-                {
-                    _reply_to_id = _curPost.StatusId;
-                }
-                else
-                {
-                    _reply_to_id = _curPost.RetweetedId.Value;
-                }
-                _reply_to_name = _curPost.ScreenName;
+                StatusText.Text = " RT @" + _curPost.ScreenName + ": " + rtdata;
+
+                // 投稿時に in_reply_to_status_id を付加する
+                var inReplyToStatusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+                var inReplyToScreenName = this._curPost.ScreenName;
+                this.inReplyTo = Tuple.Create(inReplyToStatusId, inReplyToScreenName);
 
                 StatusText.SelectionStart = 0;
                 StatusText.Focus();
@@ -11775,7 +11715,7 @@ namespace OpenTween
 
         private void QuoteStripMenuItem_Click(object sender, EventArgs e) // Handles QuoteStripMenuItem.Click, QtOpMenuItem.Click
         {
-            doQuote();
+            doQuoteOfficial();
         }
 
         private void SearchButton_Click(object sender, EventArgs e)
@@ -11849,6 +11789,26 @@ namespace OpenTween
             await this.DoRefreshMore();
         }
 
+        /// <summary>
+        /// 指定されたタブのListTabにおける位置を返します
+        /// </summary>
+        /// <remarks>
+        /// 非表示のタブについて -1 が返ることを常に考慮して下さい
+        /// </remarks>
+        public int GetTabPageIndex(string tabName)
+        {
+            var index = 0;
+            foreach (var tabPage in this.ListTab.TabPages.Cast<TabPage>())
+            {
+                if (tabPage.Text == tabName)
+                    return index;
+
+                index++;
+            }
+
+            return -1;
+        }
+
         private void UndoRemoveTabMenuItem_Click(object sender, EventArgs e)
         {
             if (_statuses.RemovedTab.Count == 0)
@@ -11870,6 +11830,7 @@ namespace OpenTween
                         tb.TabName = relatedTab.TabName;
                         this.ClearTab(tb.TabName, false);
                         _statuses.Tabs[tb.TabName] = tb;
+
                         for (int i = 0; i < ListTab.TabPages.Count; i++)
                         {
                             var tabPage = ListTab.TabPages[i];
@@ -11927,21 +11888,21 @@ namespace OpenTween
             }
         }
 
-        private void doMoveToRTHome()
+        private async Task doMoveToRTHome()
         {
             if (_curList.SelectedIndices.Count > 0)
             {
                 PostClass post = GetCurTabPost(_curList.SelectedIndices[0]);
                 if (post.RetweetedId != null)
                 {
-                    OpenUriAsync("https://twitter.com/" + GetCurTabPost(_curList.SelectedIndices[0]).RetweetedBy);
+                    await this.OpenUriInBrowserAsync("https://twitter.com/" + GetCurTabPost(_curList.SelectedIndices[0]).RetweetedBy);
                 }
             }
         }
 
-        private void MoveToRTHomeMenuItem_Click(object sender, EventArgs e)
+        private async void MoveToRTHomeMenuItem_Click(object sender, EventArgs e)
         {
-            doMoveToRTHome();
+            await this.doMoveToRTHome();
         }
 
         private void IdFilterAddMenuItem_Click(object sender, EventArgs e)
@@ -11957,9 +11918,20 @@ namespace OpenTween
                 //タブ選択（or追加）
                 if (!SelectTab(out tabName)) return;
 
-                bool mv = false;
-                bool mk = false;
-                MoveOrCopy(ref mv, ref mk);
+                var tab = this._statuses.Tabs[tabName];
+
+                bool mv;
+                bool mk;
+                if (tab.TabType != MyCommon.TabUsageType.Mute)
+                {
+                    this.MoveOrCopy(out mv, out mk);
+                }
+                else
+                {
+                    // ミュートタブでは常に MoveMatches を true にする
+                    mv = true;
+                    mk = false;
+                }
 
                 PostFilterRule fc = new PostFilterRule();
                 fc.FilterName = name;
@@ -11968,7 +11940,7 @@ namespace OpenTween
                 fc.MarkMatches = mk;
                 fc.UseRegex = false;
                 fc.FilterByUrl = false;
-                _statuses.Tabs[tabName].AddFilter(fc);
+                tab.AddFilter(fc);
 
                 this.ApplyPostFilters();
                 SaveConfigsTabs();
@@ -11997,11 +11969,13 @@ namespace OpenTween
 
             if (TabInformations.GetInstance().SubscribableLists.Count == 0)
             {
-                string res = this.tw.GetListsApi();
-
-                if (!string.IsNullOrEmpty(res))
+                try
                 {
-                    MessageBox.Show("Failed to get lists. (" + res + ")");
+                    this.tw.GetListsApi();
+                }
+                catch (WebApiException ex)
+                {
+                    MessageBox.Show("Failed to get lists. (" + ex.Message + ")");
                     return;
                 }
             }
@@ -12183,8 +12157,11 @@ namespace OpenTween
 
                 if (_curPost.IsMe)
                 {
-                    this.RtOpMenuItem.Enabled = false;
-                    this.FavoriteRetweetMenuItem.Enabled = false;
+                    this.RtOpMenuItem.Enabled = false;  //公式RTは無効に
+                    this.RtUnOpMenuItem.Enabled = true;
+                    this.QtOpMenuItem.Enabled = true;
+                    this.FavoriteRetweetMenuItem.Enabled = false;  //公式RTは無効に
+                    this.FavoriteRetweetUnofficialMenuItem.Enabled = true;
                 }
                 else
                 {
@@ -12251,11 +12228,27 @@ namespace OpenTween
 
         private void SplitContainer3_SplitterMoved(object sender, SplitterEventArgs e)
         {
-            if (this.WindowState == FormWindowState.Normal && !_initialLayout)
+            if (this._initialLayout)
+                return;
+
+            int splitterDistance;
+            switch (this.WindowState)
             {
-                _mySpDis3 = SplitContainer3.SplitterDistance;
-                _modifySettingLocal = true;
+                case FormWindowState.Normal:
+                    splitterDistance = this.SplitContainer3.SplitterDistance;
+                    break;
+                case FormWindowState.Maximized:
+                    // 最大化時は、通常時のウィンドウサイズに換算した SplitterDistance を算出する
+                    var normalContainerWidth = this._mySize.Width - SystemInformation.Border3DSize.Width * 2;
+                    splitterDistance = this.SplitContainer3.SplitterDistance - (this.SplitContainer3.Width - normalContainerWidth);
+                    splitterDistance = Math.Min(splitterDistance, normalContainerWidth - this.SplitContainer3.SplitterWidth - this.SplitContainer3.Panel2MinSize);
+                    break;
+                default:
+                    return;
             }
+
+            this._mySpDis3 = splitterDistance;
+            this._modifySettingLocal = true;
         }
 
         private void MenuItemEdit_DropDownOpening(object sender, EventArgs e)
@@ -12300,87 +12293,58 @@ namespace OpenTween
             SetNotifyIconText();
         }
 
-        private void UserStatusToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void UserStatusToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string id = "";
-            if (_curPost != null)
-            {
-                id = _curPost.ScreenName;
-            }
-            ShowUserStatus(id);
+            var id = _curPost?.ScreenName ?? "";
+
+            await this.ShowUserStatus(id);
         }
 
-        private class GetUserInfoArgs
-        {
-            public Twitter tw;
-            public string id;
-            public TwitterUser user;
-        }
-
-        private void GetUserInfo_DoWork(object sender, DoWorkEventArgs e)
-        {
-            GetUserInfoArgs args = (GetUserInfoArgs)e.Argument;
-            e.Result = args.tw.GetUserInfo(args.id, ref args.user);
-        }
-
-        private void doShowUserStatus(string id, bool ShowInputDialog)
+        private async Task doShowUserStatus(string id, bool ShowInputDialog)
         {
             TwitterUser user = null;
-            GetUserInfoArgs args = new GetUserInfoArgs();
+
             if (ShowInputDialog)
             {
-                using (InputTabName inputName = new InputTabName())
+                using (var inputName = new InputTabName())
                 {
                     inputName.FormTitle = "Show UserStatus";
                     inputName.FormDescription = Properties.Resources.FRMessage1;
                     inputName.TabName = id;
-                    if (inputName.ShowDialog() == DialogResult.OK &&
-                        !string.IsNullOrEmpty(inputName.TabName.Trim()))
-                    {
-                        id = inputName.TabName.Trim();
-                        args.tw = tw;
-                        args.id = id;
-                        args.user = user;
-                        using (FormInfo _info = new FormInfo(this, Properties.Resources.doShowUserStatusText1,
-                                                             GetUserInfo_DoWork,
-                                                             null,
-                                                             args))
-                        {
-                            _info.ShowDialog();
-                            string ret = (string)_info.Result;
-                            if (string.IsNullOrEmpty(ret))
-                                doShowUserStatus(args.user);
-                            else
-                                MessageBox.Show(ret);
-                        }
-                    }
+
+                    if (inputName.ShowDialog(this) != DialogResult.OK)
+                        return;
+                    if (string.IsNullOrWhiteSpace(inputName.TabName))
+                        return;
+
+                    id = inputName.TabName.Trim();
                 }
             }
-            else
+
+            using (var dialog = new WaitingDialog(Properties.Resources.doShowUserStatusText1))
             {
-                args.tw = tw;
-                args.id = id;
-                args.user = user;
-                using (FormInfo _info = new FormInfo(this, Properties.Resources.doShowUserStatusText1,
-                                                     GetUserInfo_DoWork,
-                                                     null,
-                                                     args))
+                var cancellationToken = dialog.EnableCancellation();
+
+                try
                 {
-                    _info.ShowDialog();
-                    string ret = (string)_info.Result;
-                    if (string.IsNullOrEmpty(ret))
-                    {
-                        doShowUserStatus(args.user);
-                    }
-                    else
-                    {
-                        MessageBox.Show(ret);
-                    }
+                    var task = Task.Run(() => this.tw.GetUserInfo(id));
+                    user = await dialog.WaitForAsync(this, task);
                 }
+                catch (WebApiException ex)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        MessageBox.Show(ex.Message);
+                    return;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
             }
+
+            await this.doShowUserStatus(user);
         }
 
-        private async void doShowUserStatus(TwitterUser user)
+        private async Task doShowUserStatus(TwitterUser user)
         {
             using (var userDialog = new UserInfoDialog(this, this.tw))
             {
@@ -12395,58 +12359,58 @@ namespace OpenTween
             }
         }
 
-        private void ShowUserStatus(string id, bool ShowInputDialog)
+        private Task ShowUserStatus(string id, bool ShowInputDialog)
         {
-            doShowUserStatus(id, ShowInputDialog);
+            return this.doShowUserStatus(id, ShowInputDialog);
         }
 
-        private void ShowUserStatus(string id)
+        private Task ShowUserStatus(string id)
         {
-            doShowUserStatus(id, true);
+            return this.doShowUserStatus(id, true);
         }
 
-        private void FollowToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void FollowToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (NameLabel.Tag != null)
             {
                 string id = (string)NameLabel.Tag;
                 if (id != tw.Username)
                 {
-                    FollowCommand(id);
+                    await this.FollowCommand(id);
                 }
             }
         }
 
-        private void UnFollowToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void UnFollowToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (NameLabel.Tag != null)
             {
                 string id = (string)NameLabel.Tag;
                 if (id != tw.Username)
                 {
-                    RemoveCommand(id, false);
+                    await this.RemoveCommand(id, false);
                 }
             }
         }
 
-        private void ShowFriendShipToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void ShowFriendShipToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (NameLabel.Tag != null)
             {
                 string id = (string)NameLabel.Tag;
                 if (id != tw.Username)
                 {
-                    ShowFriendship(id);
+                    await this.ShowFriendship(id);
                 }
             }
         }
 
-        private void ShowUserStatusToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void ShowUserStatusToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (NameLabel.Tag != null)
             {
                 string id = (string)NameLabel.Tag;
-                ShowUserStatus(id, false);
+                await this.ShowUserStatus(id, false);
             }
         }
 
@@ -12468,54 +12432,43 @@ namespace OpenTween
             }
         }
 
-        private void ShowProfileMenuItem_Click(object sender, EventArgs e)
+        private async void ShowProfileMenuItem_Click(object sender, EventArgs e)
         {
             if (_curPost != null)
             {
-                ShowUserStatus(_curPost.ScreenName, false);
+                await this.ShowUserStatus(_curPost.ScreenName, false);
             }
         }
 
-        private void GetRetweet_DoWork(object sender, DoWorkEventArgs e)
+        private async void RtCountMenuItem_Click(object sender, EventArgs e)
         {
-            int counter = 0;
+            if (!this.ExistCurrentPost)
+                return;
 
-            long statusid;
-            if (_curPost.RetweetedId != null)
-            {
-                statusid = _curPost.RetweetedId.Value;
-            }
-            else
-            {
-                statusid = _curPost.StatusId;
-            }
-            tw.GetStatus_Retweeted_Count(statusid, ref counter);
+            var statusId = this._curPost.RetweetedId ?? this._curPost.StatusId;
+            int retweetCount = 0;
 
-            e.Result = counter;
-        }
-
-        private void RtCountMenuItem_Click(object sender, EventArgs e)
-        {
-            if (this.ExistCurrentPost)
+            using (var dialog = new WaitingDialog(Properties.Resources.RtCountMenuItem_ClickText1))
             {
-                using (FormInfo _info = new FormInfo(this, Properties.Resources.RtCountMenuItem_ClickText1,
-                                                     GetRetweet_DoWork))
+                var cancellationToken = dialog.EnableCancellation();
+
+                try
                 {
-                    int retweet_count = 0;
-
-                    // ダイアログ表示
-                    _info.ShowDialog();
-                    retweet_count = (int)_info.Result;
-                    if (retweet_count < 0)
-                    {
-                        MessageBox.Show(Properties.Resources.RtCountText2);
-                    }
-                    else
-                    {
-                        MessageBox.Show(retweet_count.ToString() + Properties.Resources.RtCountText1);
-                    }
+                    var task = Task.Run(() => this.tw.GetStatus_Retweeted_Count(statusId));
+                    retweetCount = await dialog.WaitForAsync(this, task);
                 }
+                catch (WebApiException ex)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        MessageBox.Show(Properties.Resources.RtCountText2 + Environment.NewLine + ex.Message);
+                    return;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
             }
+
+            MessageBox.Show(retweetCount + Properties.Resources.RtCountText1);
         }
 
         private HookGlobalHotkey _hookGlobalHotkey;
@@ -12546,6 +12499,7 @@ namespace OpenTween
             this.ImageSelector.FilePickDialog = OpenFileDialog1;
 
             this.ReplaceAppName();
+            this.InitializeShortcuts();
         }
 
         private void _hookGlobalHotkey_HotkeyPressed(object sender, KeyEventArgs e)
@@ -12575,11 +12529,11 @@ namespace OpenTween
             this.UserPicture.Cursor = Cursors.Default;
         }
 
-        private void UserPicture_DoubleClick(object sender, EventArgs e)
+        private async void UserPicture_DoubleClick(object sender, EventArgs e)
         {
             if (NameLabel.Tag != null)
             {
-                OpenUriAsync(MyCommon.TwitterUrl + NameLabel.Tag.ToString());
+                await this.OpenUriInBrowserAsync(MyCommon.TwitterUrl + NameLabel.Tag.ToString());
             }
         }
 
@@ -12659,6 +12613,35 @@ namespace OpenTween
         {
             this.StatusText_TextChanged(null, null);
         }
+
+        /// <summary>
+        /// StatusTextでCtrl+Vが押下された時の処理
+        /// </summary>
+        private void ProcClipboardFromStatusTextWhenCtrlPlusV()
+        {
+            if (Clipboard.ContainsText())
+            {
+                // clipboardにテキストがある場合は貼り付け処理
+                this.StatusText.Paste(Clipboard.GetText());
+            }
+            else if (Clipboard.ContainsImage())
+            {
+                // 画像があるので投稿処理を行う
+                if (MessageBox.Show(Properties.Resources.PostPictureConfirm3,
+                                   Properties.Resources.PostPictureWarn4,
+                                   MessageBoxButtons.OKCancel,
+                                   MessageBoxIcon.Question,
+                                   MessageBoxDefaultButton.Button2)
+                               == DialogResult.OK)
+                {
+                    // clipboardから画像を取得
+                    using (var image = Clipboard.GetImage())
+                    {
+                        this.ImageSelector.BeginSelection(image);
+                    }
+                }
+            }
+        }
 #endregion
 
         private void ListManageToolStripMenuItem_Click(object sender, EventArgs e)
@@ -12684,21 +12667,21 @@ namespace OpenTween
             set { _modifySettingAtId = value; }
         }
 
-        private void SourceLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void SourceLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            string link = (string)SourceLinkLabel.Tag;
-            if (!string.IsNullOrEmpty(link) && e.Button == MouseButtons.Left)
+            var sourceUri = (Uri)this.SourceLinkLabel.Tag;
+            if (sourceUri != null && e.Button == MouseButtons.Left)
             {
-                OpenUriAsync(link);
+                await this.OpenUriInBrowserAsync(sourceUri.AbsoluteUri);
             }
         }
 
         private void SourceLinkLabel_MouseEnter(object sender, EventArgs e)
         {
-            string link = (string)SourceLinkLabel.Tag;
-            if (!string.IsNullOrEmpty(link))
+            var sourceUri = (Uri)this.SourceLinkLabel.Tag;
+            if (sourceUri != null)
             {
-                StatusLabelUrl.Text = MyCommon.ConvertToReadableUrl(link);
+                StatusLabelUrl.Text = MyCommon.ConvertToReadableUrl(sourceUri.AbsoluteUri);
             }
         }
 
@@ -12752,6 +12735,30 @@ namespace OpenTween
                     MessageBox.Show(this, ex.Message, Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        /// <summary>
+        /// 指定されたツイートに対する関連発言タブを開きます
+        /// </summary>
+        /// <param name="statusId">表示するツイートのID</param>
+        /// <exception cref="TabException">名前の重複が多すぎてタブを作成できない場合</exception>
+        private async Task OpenRelatedTab(long statusId)
+        {
+            var post = this._statuses[statusId];
+            if (post == null)
+            {
+                try
+                {
+                    post = await Task.Run(() => this.tw.GetStatusApi(false, statusId));
+                }
+                catch (WebApiException ex)
+                {
+                    this.StatusLabel.Text = ex.Message;
+                    return;
+                }
+            }
+
+            await this.OpenRelatedTab(post);
         }
 
         /// <summary>
@@ -12820,14 +12827,15 @@ namespace OpenTween
             {
                 if (InvokeRequired && !IsDisposed)
                 {
-                    Invoke((Action) (() =>
+                    Invoke((Action) (async () =>
                            {
                                _statuses.RemovePostReserve(e.StatusId);
                                if (_curTab != null && _statuses.Tabs[_curTab.Text].Contains(e.StatusId))
                                {
                                    this.PurgeListViewItemCache();
                                    ((DetailsListView)_curTab.Tag).Update();
-                                   if (_curPost != null && _curPost.StatusId == e.StatusId) DispSelectedPost(true);
+                                   if (_curPost != null && _curPost.StatusId == e.StatusId)
+                                       await this.DispSelectedPost(true);
                                }
                            }));
                     return;
@@ -12889,7 +12897,11 @@ namespace OpenTween
             {
                 if (InvokeRequired && !IsDisposed)
                 {
-                    Invoke(new Action<bool>(RefreshTimeline), true);
+                    Invoke((Action)(async () =>
+                    {
+                        await this.RefreshTasktrayIcon(true);
+                        this.RefreshTimeline(true);
+                    }));
                     return;
                 }
             }
@@ -13178,14 +13190,15 @@ namespace OpenTween
             }
         }
 
-        private void OpenOwnFavedMenuItem_Click(object sender, EventArgs e)
+        private async void OpenOwnFavedMenuItem_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(tw.Username)) OpenUriAsync(Properties.Resources.FavstarUrl + "users/" + tw.Username + "/recent");
+            if (!string.IsNullOrEmpty(tw.Username))
+                await this.OpenUriInBrowserAsync(Properties.Resources.FavstarUrl + "users/" + tw.Username + "/recent");
         }
 
-        private void OpenOwnHomeMenuItem_Click(object sender, EventArgs e)
+        private async void OpenOwnHomeMenuItem_Click(object sender, EventArgs e)
         {
-            OpenUriAsync(MyCommon.TwitterUrl + tw.Username);
+            await this.OpenUriInBrowserAsync(MyCommon.TwitterUrl + tw.Username);
         }
 
         private async Task doTranslation(string str)
@@ -13239,11 +13252,8 @@ namespace OpenTween
 
         private string GetUserIdFromCurPostOrInput(string caption)
         {
-            string id = "";
-            if (_curPost != null)
-            {
-                id = _curPost.ScreenName;
-            }
+            var id = _curPost?.ScreenName ?? "";
+
             using (InputTabName inputName = new InputTabName())
             {
                 inputName.FormTitle = caption;
@@ -13271,12 +13281,12 @@ namespace OpenTween
             }
         }
 
-        private void UserFavorareToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void UserFavorareToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string id = GetUserIdFromCurPostOrInput("Show Favstar");
             if (!string.IsNullOrEmpty(id))
             {
-                OpenUriAsync(Properties.Resources.FavstarUrl + "users/" + id + "/recent");
+                await this.OpenUriInBrowserAsync(Properties.Resources.FavstarUrl + "users/" + id + "/recent");
             }
         }
 
@@ -13303,7 +13313,7 @@ namespace OpenTween
             TimelineRefreshEnableChange(!StopRefreshAllMenuItem.Checked);
         }
 
-        private void OpenUserAppointUrl()
+        private async Task OpenUserAppointUrl()
         {
             if (this._cfgCommon.UserAppointUrl != null)
             {
@@ -13313,27 +13323,23 @@ namespace OpenTween
                     {
                         string xUrl = this._cfgCommon.UserAppointUrl;
                         xUrl = xUrl.Replace("{ID}", _curPost.ScreenName);
-                        if (_curPost.RetweetedId != null)
-                        {
-                            xUrl = xUrl.Replace("{STATUS}", _curPost.RetweetedId.ToString());
-                        }
-                        else
-                        {
-                            xUrl = xUrl.Replace("{STATUS}", _curPost.StatusId.ToString());
-                        }
-                        OpenUriAsync(xUrl);
+
+                        var statusId = _curPost.RetweetedId ?? _curPost.StatusId;
+                        xUrl = xUrl.Replace("{STATUS}", statusId.ToString());
+
+                        await this.OpenUriInBrowserAsync(xUrl);
                     }
                 }
                 else
                 {
-                    OpenUriAsync(this._cfgCommon.UserAppointUrl);
+                    await this.OpenUriInBrowserAsync(this._cfgCommon.UserAppointUrl);
                 }
             }
         }
 
-        private void OpenUserSpecifiedUrlMenuItem_Click(object sender, EventArgs e)
+        private async void OpenUserSpecifiedUrlMenuItem_Click(object sender, EventArgs e)
         {
-            OpenUserAppointUrl();
+            await this.OpenUserAppointUrl();
         }
 
         private void SourceCopyMenuItem_Click(object sender, EventArgs e)
@@ -13351,10 +13357,10 @@ namespace OpenTween
 
         private void SourceUrlCopyMenuItem_Click(object sender, EventArgs e)
         {
-            string selText = (string)SourceLinkLabel.Tag;
+            var sourceUri = (Uri)this.SourceLinkLabel.Tag;
             try
             {
-                Clipboard.SetDataObject(selText, false, 5, 100);
+                Clipboard.SetDataObject(sourceUri.AbsoluteUri, false, 5, 100);
             }
             catch (Exception ex)
             {
@@ -13415,26 +13421,26 @@ namespace OpenTween
                 this.SplitContainer3.FixedPanel = FixedPanel.Panel2;
         }
 
-        private void tweetThumbnail1_ThumbnailDoubleClick(object sender, ThumbnailDoubleClickEventArgs e)
+        private async void tweetThumbnail1_ThumbnailDoubleClick(object sender, ThumbnailDoubleClickEventArgs e)
         {
-            this.OpenThumbnailPicture(e.Thumbnail);
+            await this.OpenThumbnailPicture(e.Thumbnail);
         }
 
-        private void tweetThumbnail1_ThumbnailImageSearchClick(object sender, ThumbnailImageSearchEventArgs e)
+        private async void tweetThumbnail1_ThumbnailImageSearchClick(object sender, ThumbnailImageSearchEventArgs e)
         {
-            this.OpenUriAsync(e.ImageUrl);
+            await this.OpenUriInBrowserAsync(e.ImageUrl);
         }
 
-        private void OpenThumbnailPicture(ThumbnailInfo thumbnail)
+        private async Task OpenThumbnailPicture(ThumbnailInfo thumbnail)
         {
             var url = thumbnail.FullSizeImageUrl ?? thumbnail.ImageUrl;
 
-            this.OpenUriAsync(url);
+            await this.OpenUriInBrowserAsync(url);
         }
 
-        private void TwitterApiStatusToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void TwitterApiStatusToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.OpenUriAsync(Twitter.ServiceAvailabilityStatusUrl);
+            await this.OpenUriInBrowserAsync(Twitter.ServiceAvailabilityStatusUrl);
         }
 
         private void PostButton_KeyDown(object sender, KeyEventArgs e)
@@ -13500,7 +13506,7 @@ namespace OpenTween
                 }
             }
 
-            if (_curList != null) _curList.Refresh();
+            _curList?.Refresh();
 
             _modifySettingCommon = true;
         }

@@ -1,6 +1,6 @@
 ﻿namespace OpenTween
 {
-    partial class FormInfo
+    partial class WaitingDialog
     {
         /// <summary>
         /// Required designer variable.
@@ -28,47 +28,45 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInfo));
-            this.LabelInformation = new System.Windows.Forms.Label();
-            this.ProgressBar1 = new System.Windows.Forms.ProgressBar();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(WaitingDialog));
+            this.labelMessage = new System.Windows.Forms.Label();
+            this.progressBar = new System.Windows.Forms.ProgressBar();
             this.SuspendLayout();
             // 
-            // LabelInformation
+            // labelMessage
             // 
-            resources.ApplyResources(this.LabelInformation, "LabelInformation");
-            this.LabelInformation.Name = "LabelInformation";
-            this.LabelInformation.TextChanged += new System.EventHandler(this.LabelInformation_TextChanged);
+            resources.ApplyResources(this.labelMessage, "labelMessage");
+            this.labelMessage.Name = "labelMessage";
             // 
-            // ProgressBar1
+            // progressBar
             // 
-            resources.ApplyResources(this.ProgressBar1, "ProgressBar1");
-            this.ProgressBar1.Name = "ProgressBar1";
-            this.ProgressBar1.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
+            resources.ApplyResources(this.progressBar, "progressBar");
+            this.progressBar.Name = "progressBar";
+            this.progressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
             // 
-            // FormInfo
+            // WaitingDialog
             // 
             resources.ApplyResources(this, "$this");
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ControlBox = false;
-            this.Controls.Add(this.LabelInformation);
-            this.Controls.Add(this.ProgressBar1);
+            this.Controls.Add(this.labelMessage);
+            this.Controls.Add(this.progressBar);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Name = "FormInfo";
+            this.Name = "WaitingDialog";
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
-            this.TopMost = true;
-            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormInfo_FormClosed);
-            this.Shown += new System.EventHandler(this.FormInfo_Shown);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ProgressDialog_FormClosing);
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ProgressDialog_KeyDown);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        internal System.Windows.Forms.Label LabelInformation;
-        internal System.Windows.Forms.ProgressBar ProgressBar1;
+        private System.Windows.Forms.Label labelMessage;
+        private System.Windows.Forms.ProgressBar progressBar;
     }
 }

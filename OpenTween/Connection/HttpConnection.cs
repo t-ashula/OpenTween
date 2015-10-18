@@ -72,10 +72,12 @@ namespace OpenTween
         ///<param name="method">HTTP通信メソッド（GET/HEAD/POST/PUT/DELETE）</param>
         ///<param name="requestUri">通信先URI</param>
         ///<param name="param">GET時のクエリ、またはPOST時のエンティティボディ</param>
+        ///<param name="gzip">Accept-Encodingヘッダにgzipを付加するかどうかを表す真偽値</param>
         ///<returns>引数で指定された内容を反映したHttpWebRequestオブジェクト</returns>
         protected HttpWebRequest CreateRequest(string method,
                                                Uri requestUri,
-                                               Dictionary<string, string> param)
+                                               Dictionary<string, string> param,
+                                               bool gzip = false)
         {
             Networking.CheckInitialized();
 
@@ -92,6 +94,12 @@ namespace OpenTween
 
             //プロキシ設定
             if (Networking.ProxyType != ProxyType.IE) webReq.Proxy = Networking.Proxy;
+
+            if (gzip)
+            {
+                // Accept-Encodingヘッダを付加
+                webReq.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
+            }
 
             webReq.Method = method;
             if (method == "POST" || method == "PUT")
@@ -130,14 +138,14 @@ namespace OpenTween
         protected HttpWebRequest CreateRequest(string method,
                                                Uri requestUri,
                                                Dictionary<string, string> param,
-                                               List<KeyValuePair<String, FileInfo>> binaryFileInfo)
+                                               List<KeyValuePair<String, IMediaItem>> binaryFileInfo)
         {
             Networking.CheckInitialized();
 
             //methodはPOST,PUTのみ許可
             UriBuilder ub = new UriBuilder(requestUri.AbsoluteUri);
             if (method == "GET" || method == "DELETE" || method == "HEAD")
-                throw new ArgumentException("Method must be POST or PUT");
+                throw new ArgumentException("Method must be POST or PUT", nameof(method));
             if ((param == null || param.Count == 0) && (binaryFileInfo == null || binaryFileInfo.Count == 0))
                 throw new ArgumentException("Data is empty");
 
@@ -169,7 +177,7 @@ namespace OpenTween
                     //POST送信するバイナリデータを作成
                     if (binaryFileInfo != null)
                     {
-                        foreach (KeyValuePair<string, FileInfo> kvp in binaryFileInfo)
+                        foreach (KeyValuePair<string, IMediaItem> kvp in binaryFileInfo)
                         {
                             string postData = "";
                             byte[] crlfByte = Encoding.UTF8.GetBytes("\r\n");
@@ -237,17 +245,7 @@ namespace OpenTween
                             byte[] postBytes = Encoding.UTF8.GetBytes(postData);
                             reqStream.Write(postBytes, 0, postBytes.Length);
                             //ファイルを読み出してHTTPのストリームに書き込み
-                            using (FileStream fs = new FileStream(kvp.Value.FullName, FileMode.Open, FileAccess.Read))
-                            {
-                                int readSize = 0;
-                                byte[] readBytes = new byte[0x1000];
-                                while (true)
-                                {
-                                    readSize = fs.Read(readBytes, 0, readBytes.Length);
-                                    if (readSize == 0) break;
-                                    reqStream.Write(readBytes, 0, readSize);
-                                }
-                            }
+                            kvp.Value.CopyTo(reqStream);
                             reqStream.Write(crlfByte, 0, crlfByte.Length);
                         }
                     }
@@ -300,14 +298,14 @@ namespace OpenTween
                         {
                             using (Stream stream = webRes.GetResponseStream())
                             {
-                                if (stream != null) stream.CopyTo(contentStream);
+                                stream?.CopyTo(contentStream);
                             }
                         }
                         else
                         {
                             using (Stream stream = new GZipStream(webRes.GetResponseStream(), CompressionMode.Decompress))
                             {
-                                if (stream != null) stream.CopyTo(contentStream);
+                                stream?.CopyTo(contentStream);
                             }
                         }
                     }
@@ -507,7 +505,7 @@ namespace OpenTween
         }
 
         ///<summary>
-        ///クエリ形式（key1=value1&key2=value2&...）の文字列をkey-valueコレクションに詰め直し
+        ///クエリ形式（key1=value1&amp;key2=value2&amp;...）の文字列をkey-valueコレクションに詰め直し
         ///</summary>
         ///<param name="queryString">クエリ文字列</param>
         ///<returns>key-valueのコレクション</returns>
@@ -524,27 +522,6 @@ namespace OpenTween
                     query.Add(Uri.UnescapeDataString(part.Substring(0, index)), Uri.UnescapeDataString(part.Substring(index + 1)));
             }
             return query;
-        }
-
-        ///<summary>
-        ///2バイト文字も考慮したUrlエンコード
-        ///</summary>
-        ///<param name="stringToEncode">エンコードする文字列</param>
-        ///<returns>エンコード結果文字列</returns>
-        protected string UrlEncode(string stringToEncode)
-        {
-            const string UnreservedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~";
-            StringBuilder sb = new StringBuilder();
-            byte[] bytes = Encoding.UTF8.GetBytes(stringToEncode);
-
-            foreach (byte b in bytes)
-            {
-                if (UnreservedChars.IndexOf((char)b) != -1)
-                    sb.Append((char)b);
-                else
-                    sb.AppendFormat("%{0:X2}", b);
-            }
-            return sb.ToString();
         }
 
         #region "InstanceTimeout"
@@ -564,7 +541,7 @@ namespace OpenTween
                 const int TimeoutMinValue = 10000;
                 const int TimeoutMaxValue = 120000;
                 if (value < TimeoutMinValue || value > TimeoutMaxValue)
-                    throw new ArgumentOutOfRangeException("Set " + TimeoutMinValue + "-" + TimeoutMaxValue + ": Value=" + value);
+                    throw new ArgumentOutOfRangeException(nameof(value), "Set " + TimeoutMinValue + "-" + TimeoutMaxValue + ": Value=" + value);
                 else
                     _timeout = value;
             }

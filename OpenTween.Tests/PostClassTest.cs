@@ -51,7 +51,7 @@ namespace OpenTween
                 string InReplyToUser = null,
                 long? InReplyToStatusId = null,
                 string Source = null,
-                string SourceHtml = null,
+                Uri SourceUri = null,
                 List<string> ReplyToList = null,
                 bool IsMe = false,
                 bool IsDm = false,
@@ -59,18 +59,23 @@ namespace OpenTween
                 bool FilterHit = false,
                 string RetweetedBy = null,
                 long? RetweetedId = null,
-                StatusGeo Geo = null) :
+                StatusGeo? Geo = null) :
                 base(Nickname, textFromApi, text, ImageUrl, screenName, createdAt, statusId, IsFav, IsRead,
                 IsReply, IsExcludeReply, IsProtect, IsOwl, IsMark, InReplyToUser, InReplyToStatusId, Source,
-                SourceHtml, ReplyToList, IsMe, IsDm, userId, FilterHit, RetweetedBy, RetweetedId, Geo)
+                SourceUri, ReplyToList, IsMe, IsDm, userId, FilterHit, RetweetedBy, RetweetedId, Geo)
             {
             }
 
-            protected override PostClass GetRetweetSource(long statusId)
+            protected override PostClass RetweetSource
             {
-                return PostClassTest.TestCases.ContainsKey(statusId) ?
-                    PostClassTest.TestCases[statusId] :
-                    null;
+                get
+                {
+                    var retweetedId = this.RetweetedId.Value;
+
+                    return PostClassTest.TestCases.ContainsKey(retweetedId) ?
+                        PostClassTest.TestCases[retweetedId] :
+                        null;
+                }
             }
         }
 
@@ -80,19 +85,10 @@ namespace OpenTween
         {
             PostClassTest.TestCases = new Dictionary<long, PostClass>
             {
-                {1L, new TestPostClass(statusId: 1L)},
-                {2L, new TestPostClass(statusId: 2L, IsFav: true)},
-                {3L, new TestPostClass(statusId: 3L, IsFav: false, RetweetedId: 2L)},
+                [1L] = new TestPostClass(statusId: 1L),
+                [2L] = new TestPostClass(statusId: 2L, IsFav: true),
+                [3L] = new TestPostClass(statusId: 3L, IsFav: false, RetweetedId: 2L),
             };
-        }
-
-        [Fact]
-        public void CloneTest()
-        {
-            var post = new PostClass();
-            var clonePost = post.Clone();
-
-            TestUtils.CheckDeepCloning(post, clonePost);
         }
 
         [Theory]
@@ -155,10 +151,58 @@ namespace OpenTween
                 IsProtect = protect,
                 IsMark = mark,
                 InReplyToStatusId = reply ? (long?)100L : null,
-                PostGeo = geo ? new PostClass.StatusGeo { Lat = -47.15, Lng = -126.716667 } : new PostClass.StatusGeo(),
+                PostGeo = geo ? new PostClass.StatusGeo(-126.716667, -47.15) : (PostClass.StatusGeo?)null,
             };
 
             Assert.Equal(expected, post.StateIndex);
+        }
+
+        [Fact]
+        public void SourceHtml_Test()
+        {
+            var post = new TestPostClass
+            {
+                Source = "Twitter Web Client",
+                SourceUri = new Uri("http://twitter.com/"),
+            };
+
+            Assert.Equal("<a href=\"http://twitter.com/\" rel=\"nofollow\">Twitter Web Client</a>", post.SourceHtml);
+        }
+
+        [Fact]
+        public void SourceHtml_PlainTextTest()
+        {
+            var post = new TestPostClass
+            {
+                Source = "web",
+                SourceUri = null,
+            };
+
+            Assert.Equal("web", post.SourceHtml);
+        }
+
+        [Fact]
+        public void SourceHtml_EscapeTest()
+        {
+            var post = new TestPostClass
+            {
+                Source = "<script>alert(1)</script>",
+                SourceUri = new Uri("http://example.com/?aaa=123&bbb=456"),
+            };
+
+            Assert.Equal("<a href=\"http://example.com/?aaa=123&amp;bbb=456\" rel=\"nofollow\">&lt;script&gt;alert(1)&lt;/script&gt;</a>", post.SourceHtml);
+        }
+
+        [Fact]
+        public void SourceHtml_EscapePlainTextTest()
+        {
+            var post = new TestPostClass
+            {
+                Source = "<script>alert(1)</script>",
+                SourceUri = null,
+            };
+
+            Assert.Equal("&lt;script&gt;alert(1)&lt;/script&gt;", post.SourceHtml);
         }
 
         [Fact]

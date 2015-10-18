@@ -100,7 +100,9 @@ namespace OpenTween.Thumbnail
                     "http://api.plixi.com/api/tpapi.svc/imagefromurl?size=big&url=${0}"),
 
                 // MobyPicture
-                new MetaThumbnailService(@"^https?://(?:www\.)?mobypicture.com/user/\w+/view/\d+$"),
+                new MetaThumbnailService(
+                    @"^https?://(?:www\.)?mobypicture.com/user/\w+/view/\d+$",
+                    new string[] { "og:image" }),  // twitter:imageは403が返って取得できない
 
                 // 携帯百景
                 new SimpleThumbnailService(
@@ -204,6 +206,12 @@ namespace OpenTween.Thumbnail
 
                 // GIFMAGAZINE
                 new SimpleThumbnailService(@"^https?://gifmagazine\.net/post_images/(\d+)", "http://img.gifmagazine.net/gifmagazine/images/${1}/original.gif"),
+
+                // SoundCloud
+                new MetaThumbnailService(@"^https?://soundcloud.com/[\w-]+/[\w-]+$"),
+
+                // Gyazo (参考: http://qiita.com/uiureo/items/9ea55b07dff28a322a9e)
+                new SimpleThumbnailService(@"^https?://gyazo\.com/([a-zA-Z0-9]+)/?$", "http://gyazo.com/${1}/raw"),
             };
         }
 
@@ -222,13 +230,14 @@ namespace OpenTween.Thumbnail
                 token.ThrowIfCancellationRequested();
             }
 
-            if (post.PostGeo != null && !(post.PostGeo.Lat == 0 && post.PostGeo.Lng == 0))
+            if (post.PostGeo != null)
             {
                 var map = MapThumb.GetDefaultInstance();
+                var point = post.PostGeo.Value;
                 thumbnails.Add(new ThumbnailInfo()
                 {
-                    ImageUrl = map.CreateMapLinkUrl(post.PostGeo.Lat, post.PostGeo.Lng),
-                    ThumbnailUrl = map.CreateStaticMapUrl(post.PostGeo.Lat, post.PostGeo.Lng),
+                    ImageUrl = map.CreateMapLinkUrl(point.Latitude, point.Longitude),
+                    ThumbnailUrl = map.CreateStaticMapUrl(point.Latitude, point.Longitude),
                     TooltipText = null,
                 });
             }

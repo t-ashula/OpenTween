@@ -37,8 +37,12 @@ namespace OpenTween.Thumbnail.Services
     /// </summary>
     class MetaThumbnailService : IThumbnailService
     {
-        protected static Regex metaPattern = new Regex("<meta (name|property)=[\"'](?<name>.+?)[\"'] (content|value)=[\"'](?<content>.+?)[\"']");
-        protected static string[] propertyNames = { "twitter:image", "twitter:image:src", "og:image" };
+        protected static Regex[] MetaPatterns =
+        {
+            new Regex("<meta (name|property)=[\"'](?<name>.+?)[\"'] (content|value)=[\"'](?<content>[^>]+?)[\"']"),
+            new Regex("<meta (content|value)=[\"'](?<content>[^>]+?)[\"'] (name|property)=[\"'](?<name>.+?)[\"']"),
+        };
+        protected static string[] PropertyNames = { "og:image", "twitter:image", "twitter:image:src" };
 
         protected HttpClient http
         {
@@ -47,16 +51,28 @@ namespace OpenTween.Thumbnail.Services
         private readonly HttpClient localHttpClient;
 
         protected readonly Regex regex;
+        protected readonly string[] propertyNames;
 
         public MetaThumbnailService(string urlPattern)
-            : this(null, urlPattern)
+            : this(null, urlPattern, null)
+        {
+        }
+
+        public MetaThumbnailService(string urlPattern, string[] propNames)
+            : this(null, urlPattern, propNames)
         {
         }
 
         public MetaThumbnailService(HttpClient http, string urlPattern)
+            : this(http, urlPattern, null)
+        {
+        }
+
+        public MetaThumbnailService(HttpClient http, string urlPattern, string[] propNames)
         {
             this.localHttpClient = http;
             this.regex = new Regex(urlPattern);
+            this.propertyNames = propNames ?? MetaThumbnailService.PropertyNames;
         }
 
         public override async Task<ThumbnailInfo> GetThumbnailInfoAsync(string url, PostClass post, CancellationToken token)
@@ -86,14 +102,17 @@ namespace OpenTween.Thumbnail.Services
 
         protected virtual string GetThumbnailUrl(string html)
         {
-            var matches = MetaThumbnailService.metaPattern.Matches(html);
-
-            foreach (Match match in matches)
+            foreach (var pattern in MetaThumbnailService.MetaPatterns)
             {
-                var propertyName = match.Groups["name"].Value;
-                if (MetaThumbnailService.propertyNames.Contains(propertyName))
+                var matches = pattern.Matches(html);
+
+                foreach (Match match in matches)
                 {
-                    return match.Groups["content"].Value;
+                    var propertyName = match.Groups["name"].Value;
+                    if (this.propertyNames.Contains(propertyName))
+                    {
+                        return match.Groups["content"].Value;
+                    }
                 }
             }
 

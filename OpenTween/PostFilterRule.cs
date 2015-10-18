@@ -35,7 +35,7 @@ namespace OpenTween
     /// タブで使用する振り分けルールを表すクラス
     /// </summary>
     [XmlType("FiltersClass")]
-    public class PostFilterRule : INotifyPropertyChanged
+    public class PostFilterRule : INotifyPropertyChanged, IEquatable<PostFilterRule>
     {
         /// <summary>
         /// Compile() メソッドの呼び出しが必要な状態か否か
@@ -66,6 +66,13 @@ namespace OpenTween
         /// </remarks>
         internal static bool AutoCompile { get; set; }
 
+        public bool Enabled
+        {
+            get { return this._enabled; }
+            set { this.SetProperty(ref this._enabled, value); }
+        }
+        private bool _enabled;
+
         [XmlElement("NameFilter")]
         public string FilterName
         {
@@ -89,7 +96,7 @@ namespace OpenTween
             set
             {
                 if (value == null)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
 
                 this.SetProperty(ref this._FilterBody, value);
             }
@@ -103,7 +110,7 @@ namespace OpenTween
             set
             {
                 if (value == null)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
 
                 this.SetProperty(ref this._ExFilterBody, value);
             }
@@ -238,6 +245,7 @@ namespace OpenTween
         {
             this.IsDirty = true;
 
+            this.Enabled = true;
             this.MarkMatches = true;
             this.UseNameField = true;
             this.ExUseNameField = true;
@@ -254,6 +262,13 @@ namespace OpenTween
         /// </summary>
         public void Compile()
         {
+            if (!this.Enabled)
+            {
+                this.FilterDelegate = x => MyCommon.HITRESULT.None;
+                this.IsDirty = false;
+                return;
+            }
+
             var postParam = Expression.Parameter(typeof(PostClass), "x");
 
             var matchExpr = this.MakeFiltersExpr(
@@ -422,6 +437,9 @@ namespace OpenTween
                 postParam,
                 typeof(PostClass).GetProperty(targetFieldName));
 
+            // targetField ?? ""
+            var targetValue = Expression.Coalesce(targetField, Expression.Constant(string.Empty));
+
             if (useRegex)
             {
                 var regex = new Regex(pattern, caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
@@ -430,7 +448,7 @@ namespace OpenTween
                 return Expression.Call(
                     Expression.Constant(regex),
                     typeof(Regex).GetMethod("IsMatch", new[] { typeof(string) }),
-                    targetField);
+                    targetValue);
             }
             else
             {
@@ -443,7 +461,7 @@ namespace OpenTween
                     return Expression.Call(
                         Expression.Constant(pattern),
                         typeof(string).GetMethod("Equals", new[] { typeof(string), typeof(StringComparison) }),
-                        targetField,
+                        targetValue,
                         Expression.Constant(compOpt));
 
                 }
@@ -453,7 +471,7 @@ namespace OpenTween
                     // targetField.IndexOf(pattern, compOpt) != -1
                     return Expression.NotEqual(
                         Expression.Call(
-                            targetField,
+                            targetValue,
                             typeof(string).GetMethod("IndexOf", new[] { typeof(string), typeof(StringComparison) }),
                             Expression.Constant(pattern),
                             Expression.Constant(compOpt)),
@@ -529,8 +547,7 @@ namespace OpenTween
         {
             this.IsDirty = true;
 
-            if (this.PropertyChanged != null)
-                this.PropertyChanged(this, e);
+            this.PropertyChanged?.Invoke(this, e);
         }
 
         #region from Tween v1.1.0.0
@@ -545,7 +562,13 @@ namespace OpenTween
         protected virtual string MakeSummary()
         {
             var fs = new StringBuilder();
-            if (!string.IsNullOrEmpty(this.FilterName) || this.FilterBody.Length > 0 || this.FilterRt || !string.IsNullOrEmpty(this.FilterSource))
+            if (!this.Enabled)
+            {
+                fs.Append("<");
+                fs.Append(Properties.Resources.Disabled);
+                fs.Append("> ");
+            }
+            if (this.HasMatchConditions())
             {
                 if (this.UseNameField)
                 {
@@ -605,7 +628,7 @@ namespace OpenTween
                 fs.Length--;
                 fs.Append(")");
             }
-            if (!string.IsNullOrEmpty(this.ExFilterName) || this.ExFilterBody.Length > 0 || this.ExFilterRt || !string.IsNullOrEmpty(this.ExFilterSource))
+            if (this.HasExcludeConditions())
             {
                 //除外
                 fs.Append(Properties.Resources.SetFiltersText12);
@@ -691,5 +714,82 @@ namespace OpenTween
             return fs.ToString();
         }
         #endregion
+
+        /// <summary>
+        /// この振り分けルールにマッチ条件が含まれているかを返します
+        /// </summary>
+        public bool HasMatchConditions()
+        {
+            return !string.IsNullOrEmpty(this.FilterName) ||
+                this.FilterBody.Any(x => !string.IsNullOrEmpty(x)) ||
+                !string.IsNullOrEmpty(this.FilterSource) ||
+                this.FilterRt;
+        }
+
+        /// <summary>
+        /// この振り分けルールに除外条件が含まれているかを返します
+        /// </summary>
+        public bool HasExcludeConditions()
+        {
+            return !string.IsNullOrEmpty(this.ExFilterName) ||
+                this.ExFilterBody.Any(x => !string.IsNullOrEmpty(x)) ||
+                !string.IsNullOrEmpty(this.ExFilterSource) ||
+                this.ExFilterRt;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals(obj as PostFilterRule);
+        }
+
+        public bool Equals(PostFilterRule other)
+        {
+            if (other == null)
+                return false;
+
+            if (other.HasMatchConditions() || this.HasMatchConditions())
+            {
+                if (other.FilterName != this.FilterName ||
+                    !other.FilterBody.SequenceEqual(this.FilterBody) ||
+                    other.FilterSource != this.FilterSource ||
+                    other.FilterRt != this.FilterRt ||
+                    other.FilterByUrl != this.FilterByUrl ||
+                    other.CaseSensitive != this.CaseSensitive ||
+                    other.UseNameField != this.UseNameField ||
+                    other.UseLambda != this.UseLambda ||
+                    other.UseRegex != this.UseRegex)
+                {
+                    return false;
+                }
+            }
+
+            if (other.HasExcludeConditions() || this.HasExcludeConditions())
+            {
+                if (other.ExFilterName != this.ExFilterName ||
+                    !other.ExFilterBody.SequenceEqual(this.ExFilterBody) ||
+                    other.ExFilterSource != this.ExFilterSource ||
+                    other.ExFilterRt != this.ExFilterRt ||
+                    other.ExFilterByUrl != this.ExFilterByUrl ||
+                    other.ExCaseSensitive != this.ExCaseSensitive ||
+                    other.ExUseNameField != this.ExUseNameField ||
+                    other.ExUseLambda != this.ExUseLambda ||
+                    other.ExUseRegex != this.ExUseRegex)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.FilterName?.GetHashCode() ?? 0 ^
+                this.FilterSource?.GetHashCode() ?? 0 ^
+                this.FilterBody.Select(x => x?.GetHashCode() ?? 0).Sum() ^
+                this.ExFilterName?.GetHashCode() ?? 0 ^
+                this.ExFilterSource?.GetHashCode() ?? 0 ^
+                this.ExFilterBody.Select(x => x?.GetHashCode() ?? 0).Sum();
+        }
     }
 }

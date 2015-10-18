@@ -40,6 +40,7 @@ namespace OpenTween
     public partial class TweetThumbnail : UserControl
     {
         protected internal List<OTPictureBox> pictureBox = new List<OTPictureBox>();
+        protected MouseWheelMessageFilter filter = new MouseWheelMessageFilter();
 
         public event EventHandler ThumbnailLoading;
         public event EventHandler<ThumbnailDoubleClickEventArgs> ThumbnailDoubleClick;
@@ -66,7 +67,7 @@ namespace OpenTween
 
             this.scrollBar.Enabled = false;
 
-            if (post.Media.Count == 0 && post.PostGeo.Lat == 0 && post.PostGeo.Lng == 0)
+            if (post.Media.Count == 0 && post.PostGeo == null)
             {
                 this.SetThumbnailCount(0);
                 return;
@@ -104,15 +105,19 @@ namespace OpenTween
             if (thumbnails.Length > 1)
                 this.scrollBar.Enabled = true;
 
-            if (this.ThumbnailLoading != null)
-                this.ThumbnailLoading(this, EventArgs.Empty);
+            this.ThumbnailLoading?.Invoke(this, EventArgs.Empty);
 
             await Task.WhenAll(loadTasks).ConfigureAwait(false);
         }
 
-        private string GetImageSearchUri(string image_uri)
+        private string GetImageSearchUriGoogle(string image_uri)
         {
             return @"https://www.google.com/searchbyimage?image_url=" + Uri.EscapeDataString(image_uri);
+        }
+
+        private string GetImageSearchUriSauceNao(string imageUri)
+        {
+            return @"https://saucenao.com/search.php?url=" + Uri.EscapeDataString(imageUri);
         }
 
         protected virtual Task<IEnumerable<ThumbnailInfo>> GetThumbailInfoAsync(PostClass post, CancellationToken token)
@@ -135,10 +140,14 @@ namespace OpenTween
                 foreach (var picbox in this.pictureBox)
                 {
                     var memoryImage = picbox.Image;
+
+                    filter.Unregister(picbox);
+
+                    picbox.MouseWheel -= this.pictureBox_MouseWheel;
+                    picbox.DoubleClick -= this.pictureBox_DoubleClick;
                     picbox.Dispose();
 
-                    if (memoryImage != null)
-                        memoryImage.Dispose();
+                    memoryImage?.Dispose();
 
                     // メモリリーク対策 (http://stackoverflow.com/questions/2792427#2793714)
                     picbox.ContextMenuStrip = null;
@@ -152,7 +161,10 @@ namespace OpenTween
                 {
                     var picbox = CreatePictureBox("pictureBox" + i);
                     picbox.Visible = (i == 0);
+                    picbox.MouseWheel += this.pictureBox_MouseWheel;
                     picbox.DoubleClick += this.pictureBox_DoubleClick;
+
+                    filter.Register(picbox);
 
                     this.panelPictureBox.Controls.Add(picbox);
                     this.pictureBox.Add(picbox);
@@ -210,16 +222,21 @@ namespace OpenTween
             }
         }
 
+        private void pictureBox_MouseWheel(object sender, MouseEventArgs e)
+        {
+            if (e.Delta > 0)
+                this.ScrollUp();
+            else
+                this.ScrollDown();
+        }
+
         private void pictureBox_DoubleClick(object sender, EventArgs e)
         {
             var thumb = ((PictureBox)sender).Tag as ThumbnailInfo;
 
             if (thumb == null) return;
 
-            if (this.ThumbnailDoubleClick != null)
-            {
-                this.ThumbnailDoubleClick(this, new ThumbnailDoubleClickEventArgs(thumb));
-            }
+            this.ThumbnailDoubleClick?.Invoke(this, new ThumbnailDoubleClickEventArgs(thumb));
         }
 
         private void contextMenuStrip_Opening(object sender, CancelEventArgs e)
@@ -230,28 +247,38 @@ namespace OpenTween
             var searchTargetUri = thumb.FullSizeImageUrl ?? thumb.ThumbnailUrl ?? null;
             if (searchTargetUri != null)
             {
-                this.searchSimilarImageMenuItem.Enabled = true;
-                this.searchSimilarImageMenuItem.Tag = searchTargetUri;
+                this.searchImageGoogleMenuItem.Enabled = true;
+                this.searchImageGoogleMenuItem.Tag = searchTargetUri;
+                this.searchImageSauceNaoMenuItem.Enabled = true;
+                this.searchImageSauceNaoMenuItem.Tag = searchTargetUri;
             }
             else
             {
-                this.searchSimilarImageMenuItem.Enabled = false;
+                this.searchImageGoogleMenuItem.Enabled = false;
+                this.searchImageSauceNaoMenuItem.Enabled = false;
             }
         }
 
         private void searchSimilarImageMenuItem_Click(object sender, EventArgs e)
         {
-            var searchTargetUri = (string)this.searchSimilarImageMenuItem.Tag;
-            var searchUri = this.GetImageSearchUri(searchTargetUri);
+            var searchTargetUri = (string)this.searchImageGoogleMenuItem.Tag;
+            var searchUri = this.GetImageSearchUriGoogle(searchTargetUri);
 
-            if (this.ThumbnailImageSearchClick != null)
-                this.ThumbnailImageSearchClick(this, new ThumbnailImageSearchEventArgs(searchUri));
+            this.ThumbnailImageSearchClick?.Invoke(this, new ThumbnailImageSearchEventArgs(searchUri));
+        }
+
+        private void searchImageSauceNaoMenuItem_Click(object sender, EventArgs e)
+        {
+            var searchTargetUri = (string)this.searchImageSauceNaoMenuItem.Tag;
+            var searchUri = this.GetImageSearchUriSauceNao(searchTargetUri);
+
+            this.ThumbnailImageSearchClick?.Invoke(this, new ThumbnailImageSearchEventArgs(searchUri));
         }
     }
 
     public class ThumbnailDoubleClickEventArgs : EventArgs
     {
-        public ThumbnailInfo Thumbnail { get; private set; }
+        public ThumbnailInfo Thumbnail { get; }
 
         public ThumbnailDoubleClickEventArgs(ThumbnailInfo thumbnail)
         {
@@ -261,7 +288,7 @@ namespace OpenTween
 
     public class ThumbnailImageSearchEventArgs : EventArgs
     {
-        public string ImageUrl { get; private set; }
+        public string ImageUrl { get; }
 
         public ThumbnailImageSearchEventArgs(string url)
         {

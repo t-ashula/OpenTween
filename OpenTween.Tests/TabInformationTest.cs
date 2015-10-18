@@ -149,18 +149,49 @@ namespace OpenTween
         }
 
         [Fact]
-        public void IsMuted_NotInHomeTimelineTest()
+        public void IsMuted_MuteTabRulesTest()
         {
-            this.tabinfo.MuteUserIds = new HashSet<long> { 12345L };
+            this.tabinfo.MuteUserIds = new HashSet<long> { };
 
-            // Recent以外のタブ（検索など）の場合は対象外とする
+            this.tabinfo.AddTab("Mute", MyCommon.TabUsageType.Mute, null);
+            var muteTab = this.tabinfo.Tabs["Mute"];
+            muteTab.AddFilter(new PostFilterRule
+            {
+                FilterName = "foo",
+                MoveMatches = true,
+            });
+
             var post = new PostClass
             {
                 UserId = 12345L,
+                ScreenName = "foo",
                 Text = "hogehoge",
-                RelTabName = "Search",
             };
-            Assert.False(this.tabinfo.IsMuted(post));
+            Assert.True(this.tabinfo.IsMuted(post));
+        }
+
+        [Fact]
+        public void IsMuted_MuteTabRules_NotInHomeTimelineTest()
+        {
+            this.tabinfo.MuteUserIds = new HashSet<long> { };
+
+            this.tabinfo.AddTab("Mute", MyCommon.TabUsageType.Mute, null);
+            var muteTab = this.tabinfo.Tabs["Mute"];
+            muteTab.AddFilter(new PostFilterRule
+            {
+                FilterName = "foo",
+                MoveMatches = true,
+            });
+
+            // ミュートタブによるミュートはリプライも対象とする
+            var post = new PostClass
+            {
+                UserId = 12345L,
+                ScreenName = "foo",
+                Text = "@hoge hogehoge",
+                IsReply = true,
+            };
+            Assert.True(this.tabinfo.IsMuted(post));
         }
 
         [Fact]
@@ -174,22 +205,22 @@ namespace OpenTween
 
             // search1 に追加するツイート (StatusId: 100, 150, 200; すべて未読)
             tab1.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false, RelTabName = "search1" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, RelTabName = "search1" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false, RelTabName = "search1" });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = false });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 150L, IsRead = false });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = false });
 
             // search2 に追加するツイート (StatusId: 150, 200, 250; すべて未読)
             tab2.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, RelTabName = "search2" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false, RelTabName = "search2" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 250L, IsRead = false, RelTabName = "search2" });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 150L, IsRead = false });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = false });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 250L, IsRead = false });
 
             this.tabinfo.DistributePosts();
 
-            string soundFile = null;
-            PostClass[] notifyPosts = null;
-            bool isMentionIncluded = false, isDeletePost = false;
-            this.tabinfo.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMentionIncluded, ref isDeletePost, false);
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
 
             // この時点での各タブの未読件数
             Assert.Equal(3, tab1.UnreadCount);
@@ -219,22 +250,22 @@ namespace OpenTween
 
             // search1 に追加するツイート (StatusId: 100, 150, 200; すべて既読)
             tab1.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = true, RelTabName = "search1" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = true, RelTabName = "search1" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = true, RelTabName = "search1" });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = true });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 150L, IsRead = true });
+            tab1.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = true });
 
             // search2 に追加するツイート (StatusId: 150, 200, 250; すべて既読)
             tab2.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = true, RelTabName = "search2" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = true, RelTabName = "search2" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 250L, IsRead = true, RelTabName = "search2" });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 150L, IsRead = true });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = true });
+            tab2.AddPostToInnerStorage(new PostClass { StatusId = 250L, IsRead = true });
 
             this.tabinfo.DistributePosts();
 
-            string soundFile = null;
-            PostClass[] notifyPosts = null;
-            bool isMentionIncluded = false, isDeletePost = false;
-            this.tabinfo.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMentionIncluded, ref isDeletePost, false);
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
 
             // この時点での各タブの未読件数
             Assert.Equal(0, tab1.UnreadCount);
@@ -260,16 +291,16 @@ namespace OpenTween
 
             // Recent に追加するツイート (StatusId: 100, 150, 200; すべて未読)
             homeTab.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false, RelTabName = "" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, RelTabName = "" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false, RelTabName = "" });
+            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false });
+            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false });
+            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false });
 
             this.tabinfo.DistributePosts();
 
-            string soundFile = null;
-            PostClass[] notifyPosts = null;
-            bool isMentionIncluded = false, isDeletePost = false;
-            this.tabinfo.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMentionIncluded, ref isDeletePost, false);
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
 
             // この時点でのHomeタブの未読件数
             Assert.Equal(3, homeTab.UnreadCount);
@@ -287,16 +318,16 @@ namespace OpenTween
             // Recent に追加するツイート (StatusId: 100, 150, 200; すべて未読)
             // StatusId: 150 は未読だがリプライ属性が付いている
             homeTab.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false, RelTabName = "" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, RelTabName = "", IsReply = true });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false, RelTabName = "" });
+            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false });
+            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, IsReply = true });
+            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false });
 
             this.tabinfo.DistributePosts();
 
-            string soundFile = null;
-            PostClass[] notifyPosts = null;
-            bool isMentionIncluded = false, isDeletePost = false;
-            this.tabinfo.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMentionIncluded, ref isDeletePost, false);
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
 
             // この時点でのHomeタブの未読件数
             Assert.Equal(3, homeTab.UnreadCount);
@@ -306,7 +337,7 @@ namespace OpenTween
 
             // リプライである StatusId: 150 を除いてすべて未読になっている
             Assert.Equal(1, homeTab.UnreadCount);
-            Assert.Equal(150L, homeTab.OldestUnreadId);
+            Assert.Equal(150L, homeTab.NextUnreadId);
         }
 
         [Fact]
@@ -316,9 +347,9 @@ namespace OpenTween
 
             // Recent に追加するツイート (StatusId: 100, 150, 200; すべて未読)
             homeTab.UnreadManage = true;
-            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false, RelTabName = "" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false, RelTabName = "" });
-            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false, RelTabName = "" });
+            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false });
+            this.tabinfo.AddPost(new PostClass { StatusId = 150L, IsRead = false });
+            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsRead = false });
 
             // StatusId: 150 だけ FilterTab の振り分けルールにヒットする (PostClass.FilterHit が true になる)
             this.tabinfo.AddTab("FilterTab", MyCommon.TabUsageType.UserDefined, null);
@@ -328,10 +359,10 @@ namespace OpenTween
 
             this.tabinfo.DistributePosts();
 
-            string soundFile = null;
-            PostClass[] notifyPosts = null;
-            bool isMentionIncluded = false, isDeletePost = false;
-            this.tabinfo.SubmitUpdate(ref soundFile, ref notifyPosts, ref isMentionIncluded, ref isDeletePost, false);
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
 
             // この時点でのHomeタブの未読件数
             Assert.Equal(3, homeTab.UnreadCount);
@@ -341,7 +372,45 @@ namespace OpenTween
 
             // FilterHit が true である StatusId: 150 を除いてすべて未読になっている
             Assert.Equal(1, homeTab.UnreadCount);
-            Assert.Equal(150L, homeTab.OldestUnreadId);
+            Assert.Equal(150L, homeTab.NextUnreadId);
+        }
+
+        [Fact]
+        public void SubmitUpdate_NotifyPriorityTest()
+        {
+            var homeTab = this.tabinfo.GetTabByType(MyCommon.TabUsageType.Home);
+            homeTab.UnreadManage = true;
+            homeTab.SoundFile = "home.wav";
+
+            var replyTab = this.tabinfo.GetTabByType(MyCommon.TabUsageType.Mentions);
+            replyTab.UnreadManage = true;
+            replyTab.SoundFile = "reply.wav";
+
+            var dmTab = this.tabinfo.GetTabByType(MyCommon.TabUsageType.DirectMessage);
+            dmTab.UnreadManage = true;
+            dmTab.SoundFile = "dm.wav";
+
+            // 通常ツイート
+            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsRead = false });
+
+            // リプライ
+            this.tabinfo.AddPost(new PostClass { StatusId = 200L, IsReply = true, IsRead = false });
+
+            // DM
+            dmTab.AddPostToInnerStorage(new PostClass { StatusId = 300L, IsDm = true, IsRead = false });
+
+            this.tabinfo.DistributePosts();
+
+            string soundFile;
+            PostClass[] notifyPosts;
+            bool isMentionIncluded, isDeletePost;
+            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out isMentionIncluded, out isDeletePost, false);
+
+            // DM が最も優先度が高いため DM の通知音が再生される
+            Assert.Equal("dm.wav", soundFile);
+
+            // 通知対象のツイートは 3 件
+            Assert.Equal(3, notifyPosts.Length);
         }
 
         class TestPostFilterRule : PostFilterRule

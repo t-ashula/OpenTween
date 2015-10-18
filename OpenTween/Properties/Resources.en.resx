@@ -634,10 +634,10 @@
     <value>Done!</value>
   </data>
   <data name="PostLengthOverMessage1" xml:space="preserve">
-    <value>The length of tweet is over 140 characters. Do you want to cut down automatically and to do post?</value>
+    <value>The length of the tweet exceeds the limit. Are you sure you want to force the post?</value>
   </data>
   <data name="PostLengthOverMessage2" xml:space="preserve">
-    <value>Over the limit length of tweet</value>
+    <value>Tweet length exceeded</value>
   </data>
   <data name="RetweetQuestion1" xml:space="preserve">
     <value>Retweet this tweet?</value>
@@ -877,9 +877,6 @@ Do you want to upload the {1} selected media file(s)?</value>
   <data name="MyLists1" xml:space="preserve">
     <value> : Manage Lists</value>
   </data>
-  <data name="PostLengthOverMessage3" xml:space="preserve">
-    <value>Abort to posting status because @id may be rounded down.</value>
-  </data>
   <data name="FavstarUrl" xml:space="preserve">
     <value>http://favstar.fm/</value>
   </data>
@@ -914,7 +911,7 @@ Do you want to upload the {1} selected media file(s)?</value>
     <value>Views:</value>
   </data>
   <data name="FavoriteLimitCountText" xml:space="preserve">
-    <value>Adding to favorites being able to do at a time is up to 250.</value>
+    <value>Adding to favorites being able to do at a time is up to {0}.</value>
   </data>
   <data name="TextSearchCountApi_Validating1" xml:space="preserve">
     <value>Getting number of tweet in Api-mode must be 20 to 200.</value>
@@ -994,11 +991,11 @@ Do you want to upload the {1} selected media file(s)?</value>
   <data name="ChangeIconToolStripMenuItem_ClickText6" xml:space="preserve">
     <value>This file type forbidden to use as icon image.</value>
   </data>
-  <data name="Disable" xml:space="preserve">
-    <value>Disable</value>
+  <data name="Disabled" xml:space="preserve">
+    <value>Disabled</value>
   </data>
-  <data name="Enable" xml:space="preserve">
-    <value>Enable</value>
+  <data name="Enabled" xml:space="preserve">
+    <value>Enabled</value>
   </data>
   <data name="GetFriendshipInfo6" xml:space="preserve">
     <value>Faild to get relation info.</value>
@@ -1008,9 +1005,6 @@ Do you want to upload the {1} selected media file(s)?</value>
   </data>
   <data name="IsValidLambdaExpText2" xml:space="preserve">
     <value>Lambda Expression Syntax Check</value>
-  </data>
-  <data name="KeitaiMailSourceString" xml:space="preserve">
-    <value>&lt;a href="https://twitter.com/" rel="nofollow"&gt;Keitai Mail&lt;/a&gt;</value>
   </data>
   <data name="NiconicoInfoText1" xml:space="preserve">
     <value>Title:</value>
@@ -1121,5 +1115,32 @@ Available service: {1}</value>
   </data>
   <data name="ChangeIconToolStripMenuItem_Confirm" xml:space="preserve">
     <value>Do you really want to change icon?</value>
+  </data>
+  <data name="MuteTabName" xml:space="preserve">
+    <value>(Mute)</value>
+  </data>
+  <data name="LoadingText" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="DisableButtonCaption" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="EnableButtonCaption" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="PostPictureConfirm3" xml:space="preserve">
+    <value>Do you want to paste image from clipboard?</value>
+  </data>
+  <data name="SearchResults_TabName" xml:space="preserve">
+    <value>Search Results</value>
+  </data>
+  <data name="StartupAuthError_Text" xml:space="preserve">
+    <value>Unable to access Twitter API.
+[{0}]
+
+ * Please confirm the network settings.
+ * Please confirm whether your PC's clock is accurate.
+    (It may fail to authentication when clock is delayed.)
+ * Please re-add the Twitter account in the settings dialog.</value>
   </data>
 </root>

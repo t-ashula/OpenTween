@@ -87,10 +87,7 @@ namespace OpenTween
         {
             get
             {
-                if (httpCon != null)
-                    return ((HttpConnectionOAuth)httpCon).AccessToken;
-                else
-                    return "";
+                return ((HttpConnectionOAuth)httpCon)?.AccessToken ?? "";
             }
         }
 
@@ -98,10 +95,7 @@ namespace OpenTween
         {
             get
             {
-                if (httpCon != null)
-                    return ((HttpConnectionOAuth)httpCon).AccessTokenSecret;
-                else
-                    return "";
+                return ((HttpConnectionOAuth)httpCon)?.AccessTokenSecret ?? "";
             }
         }
 
@@ -109,10 +103,7 @@ namespace OpenTween
         {
             get
             {
-                if (httpCon != null)
-                    return httpCon.AuthUsername;
-                else
-                    return "";
+                return httpCon?.AuthUsername ?? "";
             }
         }
 
@@ -120,10 +111,7 @@ namespace OpenTween
         {
             get
             {
-                if (httpCon != null)
-                    return httpCon.AuthUserId;
-                else
-                    return 0;
+                return httpCon?.AuthUserId ?? 0;
             }
             set
             {
@@ -182,7 +170,7 @@ namespace OpenTween
                 null);
         }
 
-        public HttpStatusCode UpdateStatusWithMedia(string status, long? replyToId, FileInfo mediaFile, ref string content)
+        public HttpStatusCode UpdateStatusWithMedia(string status, long? replyToId, IMediaItem item, ref string content)
         {
             //画像投稿用エンドポイント
             Dictionary<string, string> param = new Dictionary<string, string>();
@@ -191,8 +179,8 @@ namespace OpenTween
             param.Add("include_entities", "true");
             //if (AppendSettingDialog.Instance.ShortenTco && AppendSettingDialog.Instance.UrlConvertAuto) param.Add("wrap_links", "true")
 
-            List<KeyValuePair<string, FileInfo>> binary = new List<KeyValuePair<string, FileInfo>>();
-            binary.Add(new KeyValuePair<string, FileInfo>("media[]", mediaFile));
+            var binary = new List<KeyValuePair<string, IMediaItem>>();
+            binary.Add(new KeyValuePair<string, IMediaItem>("media[]", item));
 
             return httpCon.GetContent(PostMethod,
                 this.CreateTwitterUri("/1.1/statuses/update_with_media.json"),
@@ -203,11 +191,11 @@ namespace OpenTween
                 this.CreateApiCalllback("/statuses/update_with_media"));
         }
 
-        public HttpStatusCode UploadMedia(FileInfo mediaFile, ref string content)
+        public HttpStatusCode UploadMedia(IMediaItem item, ref string content)
         {
             //画像投稿専用エンドポイント
-            List<KeyValuePair<string, FileInfo>> binary = new List<KeyValuePair<string, FileInfo>>();
-            binary.Add(new KeyValuePair<string, FileInfo>("media", mediaFile));
+            var binary = new List<KeyValuePair<string, IMediaItem>>();
+            binary.Add(new KeyValuePair<string, IMediaItem>("media", item));
 
             return httpCon.GetContent(PostMethod,
                 this.CreateTwitterUploadUri("/1.1/media/upload.json"),
@@ -481,6 +469,7 @@ namespace OpenTween
                 param.Add("max_id", max_id.ToString());
             if (since_id != null)
                 param.Add("since_id", since_id.ToString());
+            param.Add("full_text", "true");
             param.Add("include_entities", "true");
 
             return httpCon.GetContent(GetMethod,
@@ -500,6 +489,7 @@ namespace OpenTween
                 param.Add("max_id", max_id.ToString());
             if (since_id != null)
                 param.Add("since_id", since_id.ToString());
+            param.Add("full_text", "true");
             param.Add("include_entities", "true");
 
             return httpCon.GetContent(GetMethod,
@@ -510,16 +500,11 @@ namespace OpenTween
                 this.CreateApiCalllback("/direct_messages/sent"));
         }
 
-        public HttpStatusCode Favorites(int? count, int? page, ref string content)
+        public HttpStatusCode Favorites(int? count, ref string content)
         {
             Dictionary<string, string> param = new Dictionary<string, string>();
-            if (count != null) param.Add("count", count.ToString());
-
-            if (page != null)
-            {
-                param.Add("page", page.ToString());
-            }
-
+            if (count != null)
+                param.Add("count", count.ToString());
             param.Add("include_entities", "true");
 
             return httpCon.GetContent(GetMethod,
@@ -796,8 +781,8 @@ namespace OpenTween
 
         public HttpStatusCode UpdateProfileImage(FileInfo imageFile, ref string content)
         {
-            List<KeyValuePair<string, FileInfo>> binary = new List<KeyValuePair<string, FileInfo>>();
-            binary.Add(new KeyValuePair<string, FileInfo>("image", imageFile));
+            var binary = new List<KeyValuePair<string, IMediaItem>>();
+            binary.Add(new KeyValuePair<string, IMediaItem>("image", new FileMediaItem(imageFile)));
 
             return httpCon.GetContent(PostMethod,
                 this.CreateTwitterUri("/1.1/account/update_profile_image.json"),
@@ -898,16 +883,16 @@ namespace OpenTween
         {
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                {"X-Access-Level", ""},
-                {"X-RateLimit-Limit", ""},
-                {"X-RateLimit-Remaining", ""},
-                {"X-RateLimit-Reset", ""},
-                {"X-Rate-Limit-Limit", ""},
-                {"X-Rate-Limit-Remaining", ""},
-                {"X-Rate-Limit-Reset", ""},
-                {"X-MediaRateLimit-Limit", ""},
-                {"X-MediaRateLimit-Remaining", ""},
-                {"X-MediaRateLimit-Reset", ""},
+                ["X-Access-Level"] = "",
+                ["X-RateLimit-Limit"] = "",
+                ["X-RateLimit-Remaining"] = "",
+                ["X-RateLimit-Reset"] = "",
+                ["X-Rate-Limit-Limit"] = "",
+                ["X-Rate-Limit-Remaining"] = "",
+                ["X-Rate-Limit-Reset"] = "",
+                ["X-MediaRateLimit-Limit"] = "",
+                ["X-MediaRateLimit-Remaining"] = "",
+                ["X-MediaRateLimit-Reset"] = "",
             };
         }
 

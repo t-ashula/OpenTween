@@ -160,6 +160,7 @@ namespace OpenTween
             public const string REPLY = "Reply";
             public const string DM = "Direct";
             public const string FAV = "Favorites";
+            public static readonly string MUTE = Properties.Resources.MuteTabName;
 
             //private string dummy;
 
@@ -216,11 +217,13 @@ namespace OpenTween
             ListDestroyed = 16384,
             Mute = 32768,
             Unmute = 65536,
+            QuotedTweet = 131072,
+            Retweet = 262144,
 
             All = (None | Favorite | Unfavorite | Follow | ListMemberAdded | ListMemberRemoved |
                    Block | Unblock | UserUpdate | Deleted | ListCreated | ListUpdated | Unfollow |
                    ListUserSubscribed | ListUserUnsubscribed | ListDestroyed |
-                   Mute | Unmute),
+                   Mute | Unmute | QuotedTweet | Retweet),
         }
 
         public static _Assembly EntryAssembly { get; internal set; }
@@ -640,8 +643,8 @@ namespace OpenTween
                 }
                 finally
                 {
-                    if (msOut != null) msOut.Dispose();
-                    if (desdecrypt != null) desdecrypt.Dispose();
+                    msOut?.Dispose();
+                    desdecrypt?.Dispose();
                 }
             }
         }
@@ -694,9 +697,9 @@ namespace OpenTween
                 }
                 finally
                 {
-                    if (msIn != null) msIn.Dispose();
-                    if (desdecrypt != null) desdecrypt.Dispose();
-                    if (cryptStreem != null) cryptStreem.Dispose();
+                    msIn?.Dispose();
+                    desdecrypt?.Dispose();
+                    cryptStreem?.Dispose();
                 }
             }
         }
@@ -743,6 +746,8 @@ namespace OpenTween
             Lists = 256,
             Related = 512,
             UserTimeline = 1024,
+            Mute = 2048,
+            SearchResults = 4096,
             //RTMyTweet
             //RTByOthers
             //RTByMe
@@ -778,7 +783,7 @@ namespace OpenTween
             }
             finally
             {
-                if (img != null) img.Dispose();
+                img?.Dispose();
             }
         }
 
@@ -914,7 +919,7 @@ namespace OpenTween
         /// 表示用のバージョン番号の文字列を生成する
         /// </summary>
         /// <remarks>
-        /// バージョン1.0.0.1のように末尾が0でない（＝開発版）の場合は「1.0.1-beta1」が出力される
+        /// バージョン1.0.0.1のように末尾が0でない（＝開発版）の場合は「1.0.1-dev」のように出力される
         /// </remarks>
         /// <returns>
         /// 生成されたバージョン番号の文字列
@@ -944,7 +949,10 @@ namespace OpenTween
                     }
                 }
 
-                return string.Format("{0}.{1}.{2}-beta{3}", versionNum[0], versionNum[1], versionNum[2], versionNum[3]);
+                if (versionNum[3] == 1)
+                    return string.Format("{0}.{1}.{2}-dev", versionNum[0], versionNum[1], versionNum[2]);
+                else
+                    return string.Format("{0}.{1}.{2}-dev (Build {3})", versionNum[0], versionNum[1], versionNum[2], versionNum[3]);
             }
         }
 
@@ -1033,6 +1041,27 @@ namespace OpenTween
         {
             for (var i = from; i >= to; i--)
                 yield return i;
+        }
+
+        /// <summary>
+        /// 2バイト文字も考慮したUrlエンコード
+        /// </summary>
+        /// <param name="stringToEncode">エンコードする文字列</param>
+        /// <returns>エンコード結果文字列</returns>
+        public static string UrlEncode(string stringToEncode)
+        {
+            const string UnreservedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~";
+            StringBuilder sb = new StringBuilder();
+            byte[] bytes = Encoding.UTF8.GetBytes(stringToEncode);
+
+            foreach (byte b in bytes)
+            {
+                if (UnreservedChars.IndexOf((char)b) != -1)
+                    sb.Append((char)b);
+                else
+                    sb.AppendFormat("%{0:X2}", b);
+            }
+            return sb.ToString();
         }
     }
 }

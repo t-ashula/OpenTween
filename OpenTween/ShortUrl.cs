@@ -323,28 +323,42 @@ namespace OpenTween
         /// <param name="shortenerType">使用する短縮URLサービス</param>
         /// <param name="srcUri">短縮するURL</param>
         /// <returns>短縮されたURL</returns>
-        public Task<Uri> ShortenUrlAsync(MyCommon.UrlConverter shortenerType, Uri srcUri)
+        public async Task<Uri> ShortenUrlAsync(MyCommon.UrlConverter shortenerType, Uri srcUri)
         {
             // 既に短縮されている状態のURLであれば短縮しない
             if (ShortUrlHosts.Contains(srcUri.Host))
-                return Task.FromResult(srcUri);
+                return srcUri;
 
-            switch (shortenerType)
+            try
             {
-                case MyCommon.UrlConverter.TinyUrl:
-                    return this.ShortenByTinyUrlAsync(srcUri);
-                case MyCommon.UrlConverter.Isgd:
-                    return this.ShortenByIsgdAsync(srcUri);
-                case MyCommon.UrlConverter.Twurl:
-                    return this.ShortenByTwurlAsync(srcUri);
-                case MyCommon.UrlConverter.Bitly:
-                    return this.ShortenByBitlyAsync(srcUri, "bit.ly");
-                case MyCommon.UrlConverter.Jmp:
-                    return this.ShortenByBitlyAsync(srcUri, "j.mp");
-                case MyCommon.UrlConverter.Uxnu:
-                    return this.ShortenByUxnuAsync(srcUri);
-                default:
-                    throw new ArgumentException("Unknown shortener.", "shortenerType");
+                switch (shortenerType)
+                {
+                    case MyCommon.UrlConverter.TinyUrl:
+                        return await this.ShortenByTinyUrlAsync(srcUri)
+                            .ConfigureAwait(false);
+                    case MyCommon.UrlConverter.Isgd:
+                        return await this.ShortenByIsgdAsync(srcUri)
+                            .ConfigureAwait(false);
+                    case MyCommon.UrlConverter.Twurl:
+                        return await this.ShortenByTwurlAsync(srcUri)
+                            .ConfigureAwait(false);
+                    case MyCommon.UrlConverter.Bitly:
+                        return await this.ShortenByBitlyAsync(srcUri, "bit.ly")
+                            .ConfigureAwait(false);
+                    case MyCommon.UrlConverter.Jmp:
+                        return await this.ShortenByBitlyAsync(srcUri, "j.mp")
+                            .ConfigureAwait(false);
+                    case MyCommon.UrlConverter.Uxnu:
+                        return await this.ShortenByUxnuAsync(srcUri)
+                            .ConfigureAwait(false);
+                    default:
+                        throw new ArgumentException("Unknown shortener.", nameof(shortenerType));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 短縮 URL の API がタイムアウトした場合
+                return srcUri;
             }
         }
 
@@ -438,11 +452,11 @@ namespace OpenTween
 
             var query = new Dictionary<string, string>
             {
-                {"login", this.BitlyId},
-                {"apiKey", this.BitlyKey},
-                {"format", "txt"},
-                {"domain", domain},
-                {"longUrl", srcUri.OriginalString},
+                ["login"] = this.BitlyId,
+                ["apiKey"] = this.BitlyKey,
+                ["format"] = "txt",
+                ["domain"] = domain,
+                ["longUrl"] = srcUri.OriginalString,
             };
 
             var uri = new Uri("https://api-ssl.bitly.com/v3/shorten?" + MyCommon.BuildQueryString(query));
@@ -468,8 +482,8 @@ namespace OpenTween
 
             var query = new Dictionary<string, string>
             {
-                {"format", "plain"},
-                {"url", srcUri.OriginalString},
+                ["format"] = "plain",
+                ["url"] = srcUri.OriginalString,
             };
 
             var uri = new Uri("http://ux.nu/api/short?" + MyCommon.BuildQueryString(query));
@@ -514,6 +528,12 @@ namespace OpenTween
                 var redirectedUrl = response.Headers.Location;
 
                 if (redirectedUrl == null)
+                    return null;
+
+                // サーバーが URL を適切にエンコードしていない場合、OriginalString に非 ASCII 文字が含まれる。
+                // その場合、redirectedUrl は文字化けしている可能性があるため使用しない
+                // 参照: http://stackoverflow.com/questions/1888933
+                if (redirectedUrl.OriginalString.Any(x => x < ' ' || x > '~'))
                     return null;
 
                 if (redirectedUrl.IsAbsoluteUri)

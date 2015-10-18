@@ -51,13 +51,13 @@ namespace OpenTween
 
         public class SearchOptions
         {
-            public readonly SearchType Type;
-            public readonly string Query;
+            public SearchType Type { get; }
+            public string Query { get; }
 
             // タイムライン内検索のみで使用する
-            public readonly bool NewTab;
-            public readonly bool CaseSensitive;
-            public readonly bool UseRegex;
+            public bool NewTab { get; }
+            public bool CaseSensitive { get; }
+            public bool UseRegex { get; }
 
             public SearchOptions(SearchType type, string query, bool newTab, bool caseSensitive, bool useRegex)
             {
@@ -211,13 +211,13 @@ namespace OpenTween
             );
         }
 
-        private /* async */ void linkLabelSearchHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void linkLabelSearchHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             // 「検索オプションの使い方」ページのURL
             const string PublicSearchHelpUrl = "https://support.twitter.com/articles/249059";
 
             var tweenMain = (TweenMain)this.Owner;
-            tweenMain.OpenUriAsync(PublicSearchHelpUrl);
+            await tweenMain.OpenUriInBrowserAsync(PublicSearchHelpUrl);
         }
 
         private void SearchWordDialog_KeyDown(object sender, KeyEventArgs e)

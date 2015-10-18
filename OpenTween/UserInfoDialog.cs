@@ -178,11 +178,8 @@ namespace OpenTween
         private async Task SetUserImageAsync(string imageUri, CancellationToken cancellationToken)
         {
             var oldImage = this.UserPicture.Image;
-            if (oldImage != null)
-            {
-                this.UserPicture.Image = null;
-                oldImage.Dispose();
-            }
+            this.UserPicture.Image = null;
+            oldImage?.Dispose();
 
             // ProfileImageUrlHttps が null になる場合があるらしい
             // 参照: https://sourceforge.jp/ticket/browse.php?group_id=6526&tid=33871
@@ -262,38 +259,34 @@ namespace OpenTween
             if (this.twitter.Username == screenName)
                 return;
 
-            var friendship = await Task.Run(() =>
+            TwitterFriendship friendship;
+            try
             {
-                var IsFollowing = false;
-                var IsFollowedBy = false;
-
-                var ret = this.twitter.GetFriendshipInfo(screenName, ref IsFollowing, ref IsFollowedBy);
-                if (!string.IsNullOrEmpty(ret))
-                    return null;
-
-                return new { IsFollowing, IsFollowedBy };
-            });
-
-            if (cancellationToken.IsCancellationRequested)
-                return;
-
-            if (friendship == null)
+                friendship = await Task.Run(() => this.twitter.GetFriendshipInfo(screenName));
+            }
+            catch (WebApiException)
             {
                 LabelIsFollowed.Text = Properties.Resources.GetFriendshipInfo6;
                 LabelIsFollowing.Text = Properties.Resources.GetFriendshipInfo6;
                 return;
             }
 
-            this.LabelIsFollowing.Text = friendship.IsFollowing
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            var isFollowing = friendship.Relationship.Source.Following;
+            var isFollowedBy = friendship.Relationship.Source.FollowedBy;
+
+            this.LabelIsFollowing.Text = isFollowing
                 ? Properties.Resources.GetFriendshipInfo1
                 : Properties.Resources.GetFriendshipInfo2;
 
-            this.LabelIsFollowed.Text = friendship.IsFollowedBy
+            this.LabelIsFollowed.Text = isFollowedBy
                 ? Properties.Resources.GetFriendshipInfo3
                 : Properties.Resources.GetFriendshipInfo4;
 
-            this.ButtonFollow.Enabled = !friendship.IsFollowing;
-            this.ButtonUnFollow.Enabled = friendship.IsFollowing;
+            this.ButtonFollow.Enabled = !isFollowing;
+            this.ButtonUnFollow.Enabled = isFollowing;
         }
 
         private void ShowUserInfo_Load(object sender, EventArgs e)
@@ -333,23 +326,25 @@ namespace OpenTween
             if (linkUrl == null)
                 return;
 
-            await this.mainForm.OpenUriAsync(linkUrl);
+            await this.mainForm.OpenUriInBrowserAsync(linkUrl);
         }
 
         private void ButtonFollow_Click(object sender, EventArgs e)
         {
-            string ret = this.twitter.PostFollowCommand(this._displayUser.ScreenName);
-            if (!string.IsNullOrEmpty(ret))
+            try
             {
-                MessageBox.Show(Properties.Resources.FRMessage2 + ret);
+                this.twitter.PostFollowCommand(this._displayUser.ScreenName);
             }
-            else
+            catch (WebApiException ex)
             {
-                MessageBox.Show(Properties.Resources.FRMessage3);
-                LabelIsFollowing.Text = Properties.Resources.GetFriendshipInfo1;
-                ButtonFollow.Enabled = false;
-                ButtonUnFollow.Enabled = true;
+                MessageBox.Show(Properties.Resources.FRMessage2 + ex.Message);
+                return;
             }
+
+            MessageBox.Show(Properties.Resources.FRMessage3);
+            LabelIsFollowing.Text = Properties.Resources.GetFriendshipInfo1;
+            ButtonFollow.Enabled = false;
+            ButtonUnFollow.Enabled = true;
         }
 
         private void ButtonUnFollow_Click(object sender, EventArgs e)
@@ -358,18 +353,20 @@ namespace OpenTween
                                Properties.Resources.ButtonUnFollow_ClickText2,
                                MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
             {
-                string ret = this.twitter.PostRemoveCommand(this._displayUser.ScreenName);
-                if (!string.IsNullOrEmpty(ret))
+                try
                 {
-                    MessageBox.Show(Properties.Resources.FRMessage2 + ret);
+                    this.twitter.PostRemoveCommand(this._displayUser.ScreenName);
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    MessageBox.Show(Properties.Resources.FRMessage3);
-                    LabelIsFollowing.Text = Properties.Resources.GetFriendshipInfo2;
-                    ButtonFollow.Enabled = true;
-                    ButtonUnFollow.Enabled = false;
+                    MessageBox.Show(Properties.Resources.FRMessage2 + ex.Message);
+                    return;
                 }
+
+                MessageBox.Show(Properties.Resources.FRMessage3);
+                LabelIsFollowing.Text = Properties.Resources.GetFriendshipInfo2;
+                ButtonFollow.Enabled = true;
+                ButtonUnFollow.Enabled = false;
             }
         }
 
@@ -385,35 +382,14 @@ namespace OpenTween
             ButtonClose.Focus();
         }
 
-        private void WebBrowser_Navigating(object sender, WebBrowserNavigatingEventArgs e)
+        private async void WebBrowser_Navigating(object sender, WebBrowserNavigatingEventArgs e)
         {
             if (e.Url.AbsoluteUri != "about:blank")
             {
                 e.Cancel = true;
 
-                if (e.Url.AbsoluteUri.StartsWith("http://twitter.com/search?q=%23") ||
-                    e.Url.AbsoluteUri.StartsWith("https://twitter.com/search?q=%23"))
-                {
-                    //ハッシュタグの場合は、タブで開く
-                    string urlStr = Uri.UnescapeDataString(e.Url.AbsoluteUri);
-                    string hash = urlStr.Substring(urlStr.IndexOf("#"));
-                    this.mainForm.HashSupl.AddItem(hash);
-                    this.mainForm.HashMgr.AddHashToHistory(hash.Trim(), false);
-                    this.mainForm.AddNewTabForSearch(hash);
-                    return;
-                }
-                else
-                {
-                    Match m = Regex.Match(e.Url.AbsoluteUri, @"^https?://twitter.com/(#!/)?(?<ScreenName>[a-zA-Z0-9_]+)$");
-                    if (SettingCommon.Instance.OpenUserTimeline && m.Success && this.mainForm.IsTwitterId(m.Result("${ScreenName}")))
-                    {
-                        this.mainForm.AddNewTabForUserTimeline(m.Result("${ScreenName}"));
-                    }
-                    else
-                    {
-                        this.mainForm.OpenUriAsync(e.Url.OriginalString);
-                    }
-                }
+                // Ctrlを押しながらリンクを開いた場合は、設定と逆の動作をするフラグを true としておく
+                await this.mainForm.OpenUriAsync(e.Url, MyCommon.IsKeyDown(Keys.Control));
             }
         }
 
@@ -448,14 +424,14 @@ namespace OpenTween
             this.SelectionCopyToolStripMenuItem.Enabled = selectedText != null;
         }
 
-        private void LinkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void LinkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            this.mainForm.OpenUriAsync("https://support.twitter.com/groups/31-twitter-basics/topics/111-features/articles/268350-x8a8d-x8a3c-x6e08-x307f-x30a2-x30ab-x30a6-x30f3-x30c8-x306b-x3064-x3044-x3066");
+            await this.mainForm.OpenUriInBrowserAsync("https://support.twitter.com/groups/31-twitter-basics/topics/111-features/articles/268350-x8a8d-x8a3c-x6e08-x307f-x30a2-x30ab-x30a6-x30f3-x30c8-x306b-x3064-x3044-x3066");
         }
 
-        private void LinkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void LinkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            this.mainForm.OpenUriAsync("https://support.twitter.com/groups/31-twitter-basics/topics/107-my-profile-account-settings/articles/243055-x516c-x958b-x3001-x975e-x516c-x958b-x30a2-x30ab-x30a6-x30f3-x30c8-x306b-x3064-x3044-x3066");
+            await this.mainForm.OpenUriInBrowserAsync("https://support.twitter.com/groups/31-twitter-basics/topics/107-my-profile-account-settings/articles/243055-x516c-x958b-x3001-x975e-x516c-x958b-x30a2-x30ab-x30a6-x30f3-x30c8-x306b-x3064-x3044-x3066");
         }
 
         private void ButtonSearchPosts_Click(object sender, EventArgs e)
@@ -468,7 +444,7 @@ namespace OpenTween
             var imageUrl = this._displayUser.ProfileImageUrlHttps;
             imageUrl = imageUrl.Remove(imageUrl.LastIndexOf("_normal"), 7);
 
-            await this.mainForm.OpenUriAsync(imageUrl);
+            await this.mainForm.OpenUriInBrowserAsync(imageUrl);
         }
 
         private bool IsEditing = false;
@@ -567,31 +543,22 @@ namespace OpenTween
 
         private async Task DoChangeIcon(string filename)
         {
-            var ret = await Task.Run(() =>
-                this.twitter.PostUpdateProfileImage(filename));
-
-            if (!string.IsNullOrEmpty(ret))
+            try
+            {
+                await Task.Run(() => this.twitter.PostUpdateProfileImage(filename));
+            }
+            catch (WebApiException ex)
             {
                 // "Err:"が付いたエラーメッセージが返ってくる
-                MessageBox.Show(ret + Environment.NewLine + Properties.Resources.ChangeIconToolStripMenuItem_ClickText4);
+                MessageBox.Show(ex.Message + Environment.NewLine + Properties.Resources.ChangeIconToolStripMenuItem_ClickText4);
+                return;
             }
-            else
-            {
-                MessageBox.Show(Properties.Resources.ChangeIconToolStripMenuItem_ClickText5);
-            }
+
+            MessageBox.Show(Properties.Resources.ChangeIconToolStripMenuItem_ClickText5);
 
             try
             {
-                var user = await Task.Run(() =>
-                {
-                    TwitterUser result = null;
-
-                    var err = this.twitter.GetUserInfo(this._displayUser.ScreenName, ref result);
-                    if (!string.IsNullOrEmpty(err))
-                        throw new WebApiException(err);
-
-                    return result;
-                });
+                var user = await Task.Run(() => this.twitter.GetUserInfo(this._displayUser.ScreenName));
 
                 if (user != null)
                     await this.ShowUserAsync(user);
@@ -632,15 +599,17 @@ namespace OpenTween
                                 Properties.Resources.ButtonBlock_ClickText2,
                                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
             {
-                string res = this.twitter.PostCreateBlock(this._displayUser.ScreenName);
-                if (!string.IsNullOrEmpty(res))
+                try
                 {
-                    MessageBox.Show(res + Environment.NewLine + Properties.Resources.ButtonBlock_ClickText3);
+                    this.twitter.PostCreateBlock(this._displayUser.ScreenName);
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    MessageBox.Show(Properties.Resources.ButtonBlock_ClickText4);
+                    MessageBox.Show(ex.Message + Environment.NewLine + Properties.Resources.ButtonBlock_ClickText3);
+                    return;
                 }
+
+                MessageBox.Show(Properties.Resources.ButtonBlock_ClickText4);
             }
         }
 
@@ -650,15 +619,17 @@ namespace OpenTween
                                 Properties.Resources.ButtonReportSpam_ClickText2,
                                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
             {
-                string res = this.twitter.PostReportSpam(this._displayUser.ScreenName);
-                if (!string.IsNullOrEmpty(res))
+                try
                 {
-                    MessageBox.Show(res + Environment.NewLine + Properties.Resources.ButtonReportSpam_ClickText3);
+                    this.twitter.PostReportSpam(this._displayUser.ScreenName);
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    MessageBox.Show(Properties.Resources.ButtonReportSpam_ClickText4);
+                    MessageBox.Show(ex.Message + Environment.NewLine + Properties.Resources.ButtonReportSpam_ClickText3);
+                    return;
                 }
+
+                MessageBox.Show(Properties.Resources.ButtonReportSpam_ClickText4);
             }
         }
 
@@ -668,15 +639,17 @@ namespace OpenTween
                                 Properties.Resources.ButtonBlockDestroy_ClickText2,
                                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
             {
-                string res = this.twitter.PostDestroyBlock(this._displayUser.ScreenName);
-                if (!string.IsNullOrEmpty(res))
+                try
                 {
-                    MessageBox.Show(res + Environment.NewLine + Properties.Resources.ButtonBlockDestroy_ClickText3);
+                    this.twitter.PostDestroyBlock(this._displayUser.ScreenName);
                 }
-                else
+                catch (WebApiException ex)
                 {
-                    MessageBox.Show(Properties.Resources.ButtonBlockDestroy_ClickText4);
+                    MessageBox.Show(ex.Message + Environment.NewLine + Properties.Resources.ButtonBlockDestroy_ClickText3);
+                    return;
                 }
+
+                MessageBox.Show(Properties.Resources.ButtonBlockDestroy_ClickText4);
             }
         }
 
@@ -738,14 +711,10 @@ namespace OpenTween
                 cts.Dispose();
 
                 var oldImage = this.UserPicture.Image;
-                if (oldImage != null)
-                {
-                    this.UserPicture.Image = null;
-                    oldImage.Dispose();
-                }
+                this.UserPicture.Image = null;
+                oldImage?.Dispose();
 
-                if (this.components != null)
-                    this.components.Dispose();
+                this.components?.Dispose();
             }
 
             base.Dispose(disposing);

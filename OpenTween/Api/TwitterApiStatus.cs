@@ -35,12 +35,12 @@ namespace OpenTween.Api
     public class TwitterApiStatus
     {
         public TwitterApiAccessLevel AccessLevel { get; set; }
-        public EndpointLimits AccessLimit { get; private set; }
+        public EndpointLimits AccessLimit { get; }
         public ApiLimit MediaUploadLimit { get; set; }
 
         public class AccessLimitUpdatedEventArgs : EventArgs
         {
-            public readonly string EndpointName;
+            public string EndpointName { get; }
 
             public AccessLimitUpdatedEventArgs(string endpointName)
             {
@@ -152,13 +152,12 @@ namespace OpenTween.Api
 
         protected virtual void OnAccessLimitUpdated(AccessLimitUpdatedEventArgs e)
         {
-            if (this.AccessLimitUpdated != null)
-                this.AccessLimitUpdated(this, e);
+            this.AccessLimitUpdated?.Invoke(this, e);
         }
 
         public class EndpointLimits : IEnumerable<KeyValuePair<string, ApiLimit>>
         {
-            public readonly TwitterApiStatus Owner;
+            public TwitterApiStatus Owner { get; }
 
             private ConcurrentDictionary<string, ApiLimit> innerDict = new ConcurrentDictionary<string, ApiLimit>();
 

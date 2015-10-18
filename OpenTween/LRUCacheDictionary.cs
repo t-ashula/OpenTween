@@ -50,7 +50,7 @@ namespace OpenTween
 
         public class CacheRemovedEventArgs : EventArgs
         {
-            public KeyValuePair<TKey, TValue> Item { get; private set; }
+            public KeyValuePair<TKey, TValue> Item { get; }
 
             public CacheRemovedEventArgs(KeyValuePair<TKey, TValue> item)
             {
@@ -98,8 +98,7 @@ namespace OpenTween
                 this.innerList.Remove(node);
                 this.innerDict.Remove(node.Value.Key);
 
-                if (this.CacheRemoved != null)
-                    this.CacheRemoved(this, new CacheRemovedEventArgs(node.Value));
+                this.CacheRemoved?.Invoke(this, new CacheRemovedEventArgs(node.Value));
             }
 
             return true;
@@ -240,13 +239,13 @@ namespace OpenTween
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             if (array == null)
-                throw new ArgumentNullException("array");
+                throw new ArgumentNullException(nameof(array));
             if (arrayIndex < 0)
-                throw new ArgumentOutOfRangeException("arrayIndex");
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
             if (arrayIndex >= array.Length)
-                throw new ArgumentException("arrayIndex is equal to or greater than array.Length.", "arrayIndex");
+                throw new ArgumentException("arrayIndex is equal to or greater than array.Length.", nameof(arrayIndex));
             if (array.Length - arrayIndex < this.Count)
-                throw new ArgumentException("The destination array is too small.", "array");
+                throw new ArgumentException("The destination array is too small.", nameof(array));
 
             foreach (var pair in this)
                 array[arrayIndex++] = pair;

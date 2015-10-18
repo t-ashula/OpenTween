@@ -29,6 +29,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
+using System.Drawing.Imaging;
 
 namespace OpenTween
 {
@@ -39,21 +40,21 @@ namespace OpenTween
     /// Image.FromStream() を使用して Image を生成する場合、
     /// Image を破棄するまでの間は元となった Stream を破棄できないためその対策として使用する。
     /// </remarks>
-    public class MemoryImage : ICloneable, IDisposable
+    public class MemoryImage : ICloneable, IDisposable, IEquatable<MemoryImage>
     {
-        public readonly Stream Stream;
-        public readonly Image Image;
+        private readonly MemoryStream stream;
+        private readonly Image image;
 
         protected bool disposed = false;
 
         /// <exception cref="InvalidImageException">
         /// ストリームから読みだされる画像データが不正な場合にスローされる
         /// </exception>
-        protected MemoryImage(Stream stream)
+        protected MemoryImage(MemoryStream stream)
         {
             try
             {
-                this.Image = Image.FromStream(stream);
+                this.image = Image.FromStream(stream);
             }
             catch (ArgumentException e)
             {
@@ -78,7 +79,81 @@ namespace OpenTween
                 throw;
             }
 
-            this.Stream = stream;
+            this.stream = stream;
+        }
+
+        /// <summary>
+        /// MemoryImage が保持している画像
+        /// </summary>
+        public Image Image
+        {
+            get
+            {
+                if (this.IsDisposed)
+                    throw new ObjectDisposedException("this");
+
+                return this.image;
+            }
+        }
+
+        /// <summary>
+        /// MemoryImage が保持している画像のストリーム
+        /// </summary>
+        public MemoryStream Stream
+        {
+            // MemoryStream は破棄されていても一部のメソッドが使用可能なためここでは例外を投げない
+            get { return this.stream; }
+        }
+
+        /// <summary>
+        /// MemoryImage が破棄されているか否か
+        /// </summary>
+        public bool IsDisposed
+        {
+            get { return this.disposed; }
+        }
+
+        /// <summary>
+        /// MemoryImage が保持している画像のフォーマット
+        /// </summary>
+        public ImageFormat ImageFormat
+        {
+            get { return this.Image.RawFormat; }
+        }
+
+        /// <summary>
+        /// MemoryImage が保持している画像のフォーマットに相当する拡張子 (ピリオド付き)
+        /// </summary>
+        public string ImageFormatExt
+        {
+            get
+            {
+                var format = this.ImageFormat;
+
+                // ImageFormat は == で正しく比較できないため Equals を使用する必要がある
+                if (format.Equals(ImageFormat.Bmp))
+                    return ".bmp";
+                if (format.Equals(ImageFormat.Emf))
+                    return ".emf";
+                if (format.Equals(ImageFormat.Gif))
+                    return ".gif";
+                if (format.Equals(ImageFormat.Icon))
+                    return ".ico";
+                if (format.Equals(ImageFormat.Jpeg))
+                    return ".jpg";
+                if (format.Equals(ImageFormat.MemoryBmp))
+                    return ".bmp";
+                if (format.Equals(ImageFormat.Png))
+                    return ".png";
+                if (format.Equals(ImageFormat.Tiff))
+                    return ".tiff";
+                if (format.Equals(ImageFormat.Wmf))
+                    return ".wmf";
+
+                // 対応する形式がなければ空文字列を返す
+                // (上記以外のフォーマットは Image.FromStream を通過できないため、ここが実行されることはまず無い)
+                return string.Empty;
+            }
         }
 
         /// <summary>
@@ -109,6 +184,43 @@ namespace OpenTween
             this.Stream.Seek(0, SeekOrigin.Begin);
 
             return MemoryImage.CopyFromStreamAsync(this.Stream);
+        }
+
+        public override int GetHashCode()
+        {
+            using (var sha1service = new System.Security.Cryptography.SHA1CryptoServiceProvider())
+            {
+                var hash = sha1service.ComputeHash(this.Stream.GetBuffer(), 0, (int)this.Stream.Length);
+                return Convert.ToBase64String(hash).GetHashCode();
+            }
+        }
+
+        public override bool Equals(object other)
+        {
+            return this.Equals(other as MemoryImage);
+        }
+
+        public bool Equals(MemoryImage other)
+        {
+            if (object.ReferenceEquals(this, other))
+                return true;
+
+            if (other == null)
+                return false;
+
+            // それぞれが保持する MemoryStream の内容が等しいことを検証する
+
+            var selfLength = this.Stream.Length;
+            var otherLength = other.Stream.Length;
+
+            // Enumerable.Take() が int 型しか受け付けないのでとりあえず int 型の範囲まで許容
+            if (selfLength > int.MaxValue || otherLength > int.MaxValue)
+                throw new ArgumentOutOfRangeException();
+
+            var selfBytes = this.Stream.GetBuffer().Take((int)this.Stream.Length);
+            var otherBytes = other.Stream.GetBuffer().Take((int)this.Stream.Length);
+
+            return selfBytes.SequenceEqual(otherBytes);
         }
 
         object ICloneable.Clone()
@@ -152,14 +264,22 @@ namespace OpenTween
         /// <param name="stream">読み込む対象となる Stream</param>
         /// <returns>作成された MemoryImage</returns>
         /// <exception cref="InvalidImageException">不正な画像データが入力された場合</exception>
-        [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
         public static MemoryImage CopyFromStream(Stream stream)
         {
-            var memstream = new MemoryStream();
+            MemoryStream memstream = null;
+            try
+            {
+                memstream = new MemoryStream();
 
-            stream.CopyTo(memstream);
+                stream.CopyTo(memstream);
 
-            return new MemoryImage(memstream);
+                return new MemoryImage(memstream);
+            }
+            catch
+            {
+                memstream?.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -174,11 +294,20 @@ namespace OpenTween
         /// <exception cref="InvalidImageException">不正な画像データが入力された場合</exception>
         public async static Task<MemoryImage> CopyFromStreamAsync(Stream stream)
         {
-            var memstream = new MemoryStream();
+            MemoryStream memstream = null;
+            try
+            {
+                memstream = new MemoryStream();
 
-            await stream.CopyToAsync(memstream).ConfigureAwait(false);
+                await stream.CopyToAsync(memstream).ConfigureAwait(false);
 
-            return new MemoryImage(memstream);
+                return new MemoryImage(memstream);
+            }
+            catch
+            {
+                memstream?.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -187,10 +316,45 @@ namespace OpenTween
         /// <param name="bytes">読み込む対象となるバイト列</param>
         /// <returns>作成された MemoryImage</returns>
         /// <exception cref="InvalidImageException">不正な画像データが入力された場合</exception>
-        [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
         public static MemoryImage CopyFromBytes(byte[] bytes)
         {
-            return new MemoryImage(new MemoryStream(bytes));
+            MemoryStream memstream = null;
+            try
+            {
+                memstream = new MemoryStream(bytes);
+                return new MemoryImage(memstream);
+            }
+            catch
+            {
+                memstream?.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Image インスタンスから MemoryImage を作成します
+        /// </summary>
+        /// <remarks>
+        /// PNG 画像として描画し直す処理を含むため、極力 Stream や byte[] を渡す他のメソッドを使用すべきです
+        /// </remarks>
+        /// <param name="image">対象となる画像</param>
+        /// <returns>作成された MemoryImage</returns>
+        public static MemoryImage CopyFromImage(Image image)
+        {
+            MemoryStream memstream = null;
+            try
+            {
+                memstream = new MemoryStream();
+
+                image.Save(memstream, ImageFormat.Png);
+
+                return new MemoryImage(memstream);
+            }
+            catch
+            {
+                memstream?.Dispose();
+                throw;
+            }
         }
     }
 

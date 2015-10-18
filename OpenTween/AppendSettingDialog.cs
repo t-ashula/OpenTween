@@ -50,7 +50,6 @@ namespace OpenTween
         internal Twitter tw;
 
         private bool _ValidationError = false;
-        private long? InitialUserId;
 
         public AppendSettingDialog()
         {
@@ -86,7 +85,6 @@ namespace OpenTween
             if (activeUser != null)
             {
                 this.BasedPanel.AuthUserCombo.SelectedItem = activeUser;
-                this.InitialUserId = activeUser.UserId;
             }
         }
 
@@ -314,6 +312,8 @@ namespace OpenTween
             var timeout = int.Parse(this.ConnectionPanel.ConnectionTimeOut.Text.Trim());
             Networking.DefaultTimeout = TimeSpan.FromSeconds(timeout);
 
+            Networking.ForceIPv4 = this.ConnectionPanel.checkBoxForceIPv4.Checked;
+
             HttpTwitter.TwitterUrl = this.ConnectionPanel.TwitterAPIText.Text.Trim();
         }
 
@@ -321,18 +321,13 @@ namespace OpenTween
         {
             this.tw.Initialize("", "", "", 0);
 
-            var pinPageUrl = "";
-            var err = this.tw.StartAuthentication(ref pinPageUrl);
-            if (!string.IsNullOrEmpty(err))
-                throw new WebApiException(err);
+            var pinPageUrl = this.tw.StartAuthentication();
 
             var pin = AuthDialog.DoAuth(this, pinPageUrl);
             if (string.IsNullOrEmpty(pin))
                 return null; // キャンセルされた場合
 
-            var err2 = this.tw.Authenticate(pin);
-            if (!string.IsNullOrEmpty(err2))
-                throw new WebApiException(err2);
+            this.tw.Authenticate(pin);
 
             return new UserAccount
             {
@@ -443,8 +438,7 @@ namespace OpenTween
 
         private void GetPeriodPanel_IntervalChanged(object sender, IntervalChangedEventArgs e)
         {
-            if (this.IntervalChanged != null)
-                this.IntervalChanged(sender, e);
+            this.IntervalChanged?.Invoke(sender, e);
         }
     }
 

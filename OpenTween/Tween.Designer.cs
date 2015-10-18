@@ -278,8 +278,8 @@
             this.ReplyStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ReplyAllStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.DMStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.ReTweetOriginalStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ReTweetStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ReTweetUnofficialStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.QuoteStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolStripSeparator39 = new System.Windows.Forms.ToolStripSeparator();
             this.FavAddToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -1340,13 +1340,13 @@
             // 
             this.RtOpMenuItem.Name = "RtOpMenuItem";
             resources.ApplyResources(this.RtOpMenuItem, "RtOpMenuItem");
-            this.RtOpMenuItem.Click += new System.EventHandler(this.ReTweetOriginalStripMenuItem_Click);
+            this.RtOpMenuItem.Click += new System.EventHandler(this.ReTweetStripMenuItem_Click);
             // 
             // RtUnOpMenuItem
             // 
             this.RtUnOpMenuItem.Name = "RtUnOpMenuItem";
             resources.ApplyResources(this.RtUnOpMenuItem, "RtUnOpMenuItem");
-            this.RtUnOpMenuItem.Click += new System.EventHandler(this.ReTweetStripMenuItem_Click);
+            this.RtUnOpMenuItem.Click += new System.EventHandler(this.ReTweetUnofficialStripMenuItem_Click);
             // 
             // QtOpMenuItem
             // 
@@ -2217,8 +2217,8 @@
             this.ReplyStripMenuItem,
             this.ReplyAllStripMenuItem,
             this.DMStripMenuItem,
-            this.ReTweetOriginalStripMenuItem,
             this.ReTweetStripMenuItem,
+            this.ReTweetUnofficialStripMenuItem,
             this.QuoteStripMenuItem,
             this.ToolStripSeparator39,
             this.FavAddToolStripMenuItem,
@@ -2263,17 +2263,17 @@
             resources.ApplyResources(this.DMStripMenuItem, "DMStripMenuItem");
             this.DMStripMenuItem.Click += new System.EventHandler(this.DMStripMenuItem_Click);
             // 
-            // ReTweetOriginalStripMenuItem
-            // 
-            this.ReTweetOriginalStripMenuItem.Name = "ReTweetOriginalStripMenuItem";
-            resources.ApplyResources(this.ReTweetOriginalStripMenuItem, "ReTweetOriginalStripMenuItem");
-            this.ReTweetOriginalStripMenuItem.Click += new System.EventHandler(this.ReTweetOriginalStripMenuItem_Click);
-            // 
             // ReTweetStripMenuItem
             // 
             this.ReTweetStripMenuItem.Name = "ReTweetStripMenuItem";
             resources.ApplyResources(this.ReTweetStripMenuItem, "ReTweetStripMenuItem");
             this.ReTweetStripMenuItem.Click += new System.EventHandler(this.ReTweetStripMenuItem_Click);
+            // 
+            // ReTweetUnofficialStripMenuItem
+            // 
+            this.ReTweetUnofficialStripMenuItem.Name = "ReTweetUnofficialStripMenuItem";
+            resources.ApplyResources(this.ReTweetUnofficialStripMenuItem, "ReTweetUnofficialStripMenuItem");
+            this.ReTweetUnofficialStripMenuItem.Click += new System.EventHandler(this.ReTweetUnofficialStripMenuItem_Click);
             // 
             // QuoteStripMenuItem
             // 
@@ -2758,8 +2758,8 @@
         internal System.Windows.Forms.ToolStripMenuItem ReplyStripMenuItem;
         internal System.Windows.Forms.ToolStripMenuItem ReplyAllStripMenuItem;
         internal System.Windows.Forms.ToolStripMenuItem DMStripMenuItem;
-        internal System.Windows.Forms.ToolStripMenuItem ReTweetOriginalStripMenuItem;
         internal System.Windows.Forms.ToolStripMenuItem ReTweetStripMenuItem;
+        internal System.Windows.Forms.ToolStripMenuItem ReTweetUnofficialStripMenuItem;
         internal System.Windows.Forms.ToolStripMenuItem QuoteStripMenuItem;
         internal System.Windows.Forms.ToolStripSeparator ToolStripSeparator39;
         internal System.Windows.Forms.ToolStripMenuItem FavAddToolStripMenuItem;

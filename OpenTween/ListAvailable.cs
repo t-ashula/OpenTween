@@ -30,6 +30,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace OpenTween
@@ -66,22 +67,28 @@ namespace OpenTween
             this.Close();
         }
 
-        private void ListAvailable_Shown(object sender, EventArgs e)
+        private async void ListAvailable_Shown(object sender, EventArgs e)
         {
-            if (TabInformations.GetInstance().SubscribableLists.Count == 0) this.RefreshLists();
-            this.ListsList.Items.AddRange(TabInformations.GetInstance().SubscribableLists.ToArray());
-            if (this.ListsList.Items.Count > 0)
+            using (ControlTransaction.Disabled(this))
             {
-                this.ListsList.SelectedIndex = 0;
-            }
-            else
-            {
-                this.UsernameLabel.Text = "";
-                this.NameLabel.Text = "";
-                this.StatusLabel.Text = "";
-                this.MemberCountLabel.Text = "0";
-                this.SubscriberCountLabel.Text = "0";
-                this.DescriptionText.Text = "";
+                try
+                {
+                    var lists = (IReadOnlyList<ListElement>)TabInformations.GetInstance().SubscribableLists;
+                    if (lists.Count == 0)
+                        lists = await this.FetchListsAsync();
+
+                    this.UpdateListsListBox(lists);
+                }
+                catch (OperationCanceledException)
+                {
+                    this.DialogResult = DialogResult.Cancel;
+                    return;
+                }
+                catch (WebApiException)
+                {
+                    this.DialogResult = DialogResult.Abort;
+                    return;
+                }
             }
         }
 
@@ -123,39 +130,58 @@ namespace OpenTween
             }
         }
 
-        private void RefreshButton_Click(object sender, EventArgs e)
+        private async void RefreshButton_Click(object sender, EventArgs e)
         {
-            this.RefreshLists();
-            this.ListsList.Items.Clear();
-            this.ListsList.Items.AddRange(TabInformations.GetInstance().SubscribableLists.ToArray());
-            if (this.ListsList.Items.Count > 0)
+            using (ControlTransaction.Disabled(this))
             {
-                this.ListsList.SelectedIndex = 0;
-            }
-        }
-
-        private void RefreshLists()
-        {
-            using (FormInfo dlg = new FormInfo(this, "Getting Lists...", RefreshLists_DoWork))
-            {
-                dlg.ShowDialog();
-                if (!String.IsNullOrEmpty(dlg.Result as String))
+                try
                 {
-                    MessageBox.Show("Failed to get lists. (" + (String)dlg.Result + ")");
-                    return;
+                    var lists = await this.FetchListsAsync();
+                    this.UpdateListsListBox(lists);
+                }
+                catch (OperationCanceledException) { }
+                catch (WebApiException ex)
+                {
+                    MessageBox.Show("Failed to get lists. (" + ex.Message + ")");
                 }
             }
         }
 
-        private void RefreshLists_DoWork(object sender, DoWorkEventArgs e)
+        private async Task<IReadOnlyList<ListElement>> FetchListsAsync()
         {
-            try
+            using (var dialog = new WaitingDialog("Getting Lists..."))
             {
-                e.Result = ((TweenMain)this.Owner).TwitterInstance.GetListsApi();
+                var cancellationToken = dialog.EnableCancellation();
+
+                var tw = ((TweenMain)this.Owner).TwitterInstance;
+                var task = Task.Run(() => tw.GetListsApi());
+                await dialog.WaitForAsync(this, task);
+
+                cancellationToken.ThrowIfCancellationRequested();
             }
-            catch (InvalidCastException)
+
+            return TabInformations.GetInstance().SubscribableLists;
+        }
+
+        private void UpdateListsListBox(IEnumerable<ListElement> lists)
+        {
+            using (ControlTransaction.Update(this.ListsList))
             {
-                return;
+                this.ListsList.Items.Clear();
+                this.ListsList.Items.AddRange(lists.ToArray());
+                if (this.ListsList.Items.Count > 0)
+                {
+                    this.ListsList.SelectedIndex = 0;
+                }
+                else
+                {
+                    this.UsernameLabel.Text = "";
+                    this.NameLabel.Text = "";
+                    this.StatusLabel.Text = "";
+                    this.MemberCountLabel.Text = "0";
+                    this.SubscriberCountLabel.Text = "0";
+                    this.DescriptionText.Text = "";
+                }
             }
         }
     }

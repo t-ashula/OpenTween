@@ -26,6 +26,7 @@
 
 using HttpConnection = OpenTween.HttpConnection;
 using IHttpConnection = OpenTween.IHttpConnection;
+using OAuthUtility = OpenTween.Connection.OAuthUtility;
 using DateTime = System.DateTime;
 using DateTimeKind = System.DateTimeKind;
 using Random = System.Random;
@@ -63,16 +64,6 @@ namespace OpenTween
 	abstract public class HttpConnectionOAuth : HttpConnection, IHttpConnection
 	{
 		/// <summary>
-		/// OAuth署名のoauth_timestamp算出用基準日付（1970/1/1 00:00:00）
-		/// </summary>
-		private static readonly DateTime UnixEpoch = new DateTime( 1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified );
-
-		/// <summary>
-		/// OAuth署名のoauth_nonce算出用乱数クラス
-		/// </summary>
-		private static readonly Random NonceRandom = new Random();
-
-		/// <summary>
 		/// OAuthのアクセストークン。永続化可能（ユーザー取り消しの可能性はある）。
 		/// </summary>
 		private string token = "";
@@ -85,7 +76,7 @@ namespace OpenTween
 		/// <summary>
 		/// OAuthのコンシューマー鍵
 		/// </summary>
-		private string consumerKey;
+		protected string consumerKey;
 
 		/// <summary>
 		/// OAuthの署名作成用秘密コンシューマーデータ
@@ -125,7 +116,7 @@ namespace OpenTween
 		/// <param name="param">GET時のクエリ、またはPOST時のエンティティボディ</param>
 		/// <param name="content">[OUT]HTTP応答のボディデータ</param>
 		/// <param name="headerInfo">[IN/OUT]HTTP応答のヘッダ情報。必要なヘッダ名を事前に設定しておくこと</param>
-		/// <param name="callback">処理終了直前に呼ばれるコールバック関数のデリゲート 不要な場合はNothingを渡すこと</param>
+		/// <param name="callback">処理終了直前に呼ばれるコールバック関数のデリゲート 不要な場合はnullを渡すこと</param>
 		/// <returns>HTTP応答のステータスコード</returns>
 		public HttpStatusCode GetContent( string method,
 		                                  Uri requestUri,
@@ -138,7 +129,7 @@ namespace OpenTween
 			if ( string.IsNullOrEmpty( token ) )
 				return HttpStatusCode.Unauthorized;
 
-			HttpWebRequest webReq = this.CreateRequest( method, requestUri, param );
+			HttpWebRequest webReq = this.CreateRequest( method, requestUri, param, gzip: true );
 			// OAuth認証ヘッダを付加
 			this.AppendOAuthInfo( webReq, param, token, tokenSecret );
 
@@ -162,7 +153,7 @@ namespace OpenTween
 		public HttpStatusCode GetContent( string method,
 		                                  Uri requestUri,
 		                                  Dictionary< string, string > param,
-		                                  List< KeyValuePair< string, FileInfo > > binary, 
+		                                  List< KeyValuePair< string, IMediaItem > > binary, 
 		                                  ref string content,
 		                                  Dictionary< string, string > headerInfo,
 		                                  CallbackDelegate callback )
@@ -344,9 +335,9 @@ namespace OpenTween
 		{
 			// ユーザー・パスワードチェック
 			if ( string.IsNullOrEmpty( username ) )
-				throw new ArgumentException( "username is null or empty", "username" );
+				throw new ArgumentException( "username is null or empty", nameof(username) );
             if ( string.IsNullOrEmpty( password ) )
-                throw new ArgumentException( "password is null or empty", "password" );
+                throw new ArgumentException( "password is null or empty", nameof(password) );
 
 			// xAuthの拡張パラメータ設定
 			Dictionary< string, string > parameter = new Dictionary< string, string >();
@@ -486,69 +477,10 @@ namespace OpenTween
 		/// <param name="tokenSecret">アクセストークンシークレット。認証処理では空文字列</param>
 		protected virtual void AppendOAuthInfo( HttpWebRequest webRequest, Dictionary< string, string > query, string token, string tokenSecret )
 		{
-			// OAuth共通情報取得
-			Dictionary< string, string > parameter = this.GetOAuthParameter( token );
-			// OAuth共通情報にquery情報を追加
-			if ( query != null )
-				foreach ( KeyValuePair< string, string > item in query )
-					parameter.Add( item.Key, item.Value );
-			// 署名の作成・追加
-			parameter.Add( "oauth_signature", this.CreateSignature( tokenSecret, webRequest.Method, webRequest.RequestUri, parameter ) );
-			// HTTPリクエストのヘッダに追加
-			StringBuilder sb = new StringBuilder( "OAuth " );
-			foreach ( KeyValuePair< string, string > item in parameter )
-				// 各種情報のうち、oauth_で始まる情報のみ、ヘッダに追加する。各情報はカンマ区切り、データはダブルクォーテーションで括る
-				if ( item.Key.StartsWith("oauth_") )
-					sb.AppendFormat( "{0}=\"{1}\",", item.Key, this.UrlEncode( item.Value ) );
-			webRequest.Headers.Add( HttpRequestHeader.Authorization, sb.ToString() );
-		}
+			var credential = OAuthUtility.CreateAuthorization( webRequest.Method, webRequest.RequestUri, query,
+				this.consumerKey, this.consumerSecret, token, tokenSecret );
 
-		/// <summary>
-		/// OAuthで使用する共通情報を取得する
-		/// </summary>
-		/// <param name="token">アクセストークン、もしくはリクエストトークン。未取得なら空文字列</param>
-		/// <returns>OAuth情報のディクショナリ</returns>
-		protected Dictionary< string, string > GetOAuthParameter( string token )
-		{
-			Dictionary< string, string > parameter = new Dictionary< string, string >();
-			parameter.Add( "oauth_consumer_key", this.consumerKey );
-			parameter.Add( "oauth_signature_method", "HMAC-SHA1" );
-			parameter.Add( "oauth_timestamp", Convert.ToInt64( ( DateTime.UtcNow - HttpConnectionOAuth.UnixEpoch ).TotalSeconds ).ToString() ); // epoch秒
-			parameter.Add( "oauth_nonce", HttpConnectionOAuth.NonceRandom.Next( 123400, 9999999 ).ToString() );
-			parameter.Add( "oauth_version", "1.0" );
-			if ( !string.IsNullOrEmpty( token ) )
-				parameter.Add( "oauth_token", token ); // トークンがあれば追加
-			return parameter;
-		}
-
-		/// <summary>
-		/// OAuth認証ヘッダの署名作成
-		/// </summary>
-		/// <param name="tokenSecret">アクセストークン秘密鍵</param>
-		/// <param name="method">HTTPメソッド文字列</param>
-		/// <param name="uri">アクセス先Uri</param>
-		/// <param name="parameter">クエリ、もしくはPOSTデータ</param>
-		/// <returns>署名文字列</returns>
-		protected virtual string CreateSignature( string tokenSecret, string method, Uri uri, Dictionary< string, string > parameter )
-		{
-			// パラメタをソート済みディクショナリに詰替（OAuthの仕様）
-			SortedDictionary< string, string > sorted = new SortedDictionary< string, string >( parameter );
-			// URLエンコード済みのクエリ形式文字列に変換
-			string paramString = MyCommon.BuildQueryString( sorted );
-			// アクセス先URLの整形
-			string url = string.Format( "{0}://{1}{2}", uri.Scheme, uri.Host, uri.AbsolutePath );
-			// 署名のベース文字列生成（&区切り）。クエリ形式文字列は再エンコードする
-			string signatureBase = string.Format( "{0}&{1}&{2}", method, this.UrlEncode( url ), this.UrlEncode( paramString ) );
-			// 署名鍵の文字列をコンシューマー秘密鍵とアクセストークン秘密鍵から生成（&区切り。アクセストークン秘密鍵なくても&残すこと）
-			string key = this.UrlEncode( this.consumerSecret ) + "&";
-			if ( !string.IsNullOrEmpty( tokenSecret ) )
-				key += this.UrlEncode( tokenSecret );
-			// 鍵生成＆署名生成
-			using ( HMACSHA1 hmac = new HMACSHA1( Encoding.ASCII.GetBytes( key ) ) )
-			{
-				byte[] hash = hmac.ComputeHash( Encoding.ASCII.GetBytes( signatureBase ) );
-				return Convert.ToBase64String( hash );
-			}
+			webRequest.Headers.Add( HttpRequestHeader.Authorization, credential );
 		}
 		#endregion // OAuth認証用ヘッダ作成・付加処理
 
