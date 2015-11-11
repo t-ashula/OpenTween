@@ -143,25 +143,25 @@ namespace OpenTween
 
             await Task.WhenAll(new[]
             {
-                this.SetDescriptionAsync(user.Description, cancellationToken),
+                this.SetDescriptionAsync(user.Description, user.Entities.Description, cancellationToken),
                 this.SetRecentStatusAsync(user.Status, cancellationToken),
-                this.SetLinkLabelWebAsync(user.Url, cancellationToken),
+                this.SetLinkLabelWebAsync(user.Url, user.Entities.Url, cancellationToken),
                 this.SetUserImageAsync(user.ProfileImageUrlHttps, cancellationToken),
                 this.LoadFriendshipAsync(user.ScreenName, cancellationToken),
             });
         }
 
-        private async Task SetDescriptionAsync(string descriptionText, CancellationToken cancellationToken)
+        private async Task SetDescriptionAsync(string descriptionText, TwitterEntities entities, CancellationToken cancellationToken)
         {
             if (descriptionText != null)
             {
                 var atlist = new List<string>();
 
-                // description に含まれる < > " の記号のみエスケープを一旦解除する
-                var decodedText = descriptionText.Replace("&lt;", "<").Replace("&gt;", ">").Replace("&quot;", "\"");
+                // user.entities には urls 以外のエンティティが含まれていないため、テキストをもとに生成する
+                entities.Hashtags = TweetExtractor.ExtractHashtagEntities(descriptionText).ToArray();
+                entities.UserMentions = TweetExtractor.ExtractMentionEntities(descriptionText).ToArray();
 
-                var html = WebUtility.HtmlEncode(decodedText);
-                html = await this.twitter.CreateHtmlAnchorAsync(html, atlist, null);
+                var html = await this.twitter.CreateHtmlAnchorAsync(descriptionText, atlist, entities, null);
                 html = this.mainForm.createDetailHtml(html);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -206,9 +206,20 @@ namespace OpenTween
             });
         }
 
-        private async Task SetLinkLabelWebAsync(string uri, CancellationToken cancellationToken)
+        private async Task SetLinkLabelWebAsync(string uri, TwitterEntities entities, CancellationToken cancellationToken)
         {
-            if (uri != null)
+            if (entities != null)
+            {
+                var expandedUrl = await ShortUrl.Instance.ExpandUrlAsync(entities.Urls[0].ExpandedUrl);
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                this.LinkLabelWeb.Text = expandedUrl;
+                this.LinkLabelWeb.Tag = expandedUrl;
+                this.ToolTip1.SetToolTip(this.LinkLabelWeb, expandedUrl);
+            }
+            else if (uri != null)
             {
                 var expandedUrl = await ShortUrl.Instance.ExpandUrlAsync(uri);
 

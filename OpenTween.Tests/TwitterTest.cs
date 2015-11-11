@@ -164,7 +164,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void GetQuoteTweetStatusIds_Test()
+        public void GetQuoteTweetStatusIds_EntityTest()
         {
             var entities = new[]
             {
@@ -177,6 +177,31 @@ namespace OpenTween
 
             var statusIds = Twitter.GetQuoteTweetStatusIds(entities);
             Assert.Equal(new[] { 599261132361072640L }, statusIds);
+        }
+
+        [Fact]
+        public void GetQuoteTweetStatusIds_UrlStringTest()
+        {
+            var urls = new[]
+            {
+                "https://twitter.com/kim_upsilon/status/599261132361072640",
+            };
+
+            var statusIds = Twitter.GetQuoteTweetStatusIds(urls);
+            Assert.Equal(new[] { 599261132361072640L }, statusIds);
+        }
+
+        [Fact]
+        public void GetQuoteTweetStatusIds_OverflowTest()
+        {
+            var urls = new[]
+            {
+                // 符号付き 64 ビット整数の範囲を超える値
+                "https://twitter.com/kim_upsilon/status/9999999999999999999",
+            };
+
+            var statusIds = Twitter.GetQuoteTweetStatusIds(urls);
+            Assert.Empty(statusIds);
         }
 
         [Fact]

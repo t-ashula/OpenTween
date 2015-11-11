@@ -1662,16 +1662,22 @@ namespace OpenTween
         /// </summary>
         public static IEnumerable<long> GetQuoteTweetStatusIds(IEnumerable<TwitterEntity> entities)
         {
-            foreach (var entity in entities)
-            {
-                var entityUrl = entity as TwitterEntityUrl;
-                if (entityUrl == null)
-                    continue;
+            var urls = entities.OfType<TwitterEntityUrl>().Where(x => x != null)
+                .Select(x => x.ExpandedUrl);
 
-                var match = Twitter.StatusUrlRegex.Match(entityUrl.ExpandedUrl);
+            return GetQuoteTweetStatusIds(urls);
+        }
+
+        public static IEnumerable<long> GetQuoteTweetStatusIds(IEnumerable<string> urls)
+        {
+            foreach (var url in urls)
+            {
+                var match = Twitter.StatusUrlRegex.Match(url);
                 if (match.Success)
                 {
-                    yield return long.Parse(match.Groups["StatusId"].Value);
+                    long statusId;
+                    if (long.TryParse(match.Groups["StatusId"].Value, out statusId))
+                        yield return statusId;
                 }
             }
         }
@@ -2673,136 +2679,6 @@ namespace OpenTween
             this.CheckStatusCode(res, content);
         }
 
-        private class range
-        {
-            public int fromIndex { get; set; }
-            public int toIndex { get; set; }
-            public range(int fromIndex, int toIndex)
-            {
-                this.fromIndex = fromIndex;
-                this.toIndex = toIndex;
-            }
-        }
-        public async Task<string> CreateHtmlAnchorAsync(string Text, List<string> AtList, Dictionary<string, string> media)
-        {
-            if (Text == null) return null;
-            var retStr = Text.Replace("&gt;", "<<<<<tweenだいなり>>>>>").Replace("&lt;", "<<<<<tweenしょうなり>>>>>");
-            //uriの正規表現
-            //const string url_valid_domain = "(?<domain>(?:[^\p{P}\s][\.\-_](?=[^\p{P}\s])|[^\p{P}\s]){1,}\.[a-z]{2,}(?::[0-9]+)?)"
-            //const string url_valid_general_path_chars = "[a-z0-9!*';:=+$/%#\[\]\-_,~]"
-            //const string url_balance_parens = "(?:\(" + url_valid_general_path_chars + "+\))"
-            //const string url_valid_url_path_ending_chars = "(?:[a-z0-9=_#/\-\+]+|" + url_balance_parens + ")"
-            //const string pth = "(?:" + url_balance_parens +
-            //    "|@" + url_valid_general_path_chars + "+/" +
-            //    "|[.,]?" + url_valid_general_path_chars + "+" +
-            //    ")"
-            //const string pth2 = "(/(?:" +
-            //    pth + "+" + url_valid_url_path_ending_chars + "|" +
-            //    pth + "+" + url_valid_url_path_ending_chars + "?|" +
-            //    url_valid_url_path_ending_chars +
-            //    ")?)?"
-            //const string qry = "(?<query>\?[a-z0-9!*'();:&=+$/%#\[\]\-_.,~]*[a-z0-9_&=#])?"
-            //const string rgUrl = "(?<before>(?:[^\""':!=#]|^|\:/))" +
-            //                            "(?<url>(?<protocol>https?://)" +
-            //                            url_valid_domain +
-            //                            pth2 +
-            //                            qry +
-            //                            ")"
-            //const string rgUrl = "(?<before>(?:[^\""':!=#]|^|\:/))" +
-            //                            "(?<url>(?<protocol>https?://|www\.)" +
-            //                            url_valid_domain +
-            //                            pth2 +
-            //                            qry +
-            //                            ")"
-            //絶対パス表現のUriをリンクに置換
-            retStr = await new Regex(rgUrl, RegexOptions.IgnoreCase).ReplaceAsync(retStr, async mu =>
-            {
-                var sb = new StringBuilder(mu.Result("${before}<a href=\""));
-                //if (mu.Result("${protocol}").StartsWith("w", StringComparison.OrdinalIgnoreCase))
-                //    sb.Append("http://");
-                //}
-                var url = mu.Result("${url}");
-                var title = await ShortUrl.Instance.ExpandUrlAsync(url);
-                sb.Append(url + "\" title=\"" + MyCommon.ConvertToReadableUrl(title) + "\">").Append(url).Append("</a>");
-                if (media != null && !media.ContainsKey(url)) media.Add(url, title);
-                return sb.ToString();
-            });
-
-            //@先をリンクに置換（リスト）
-            retStr = Regex.Replace(retStr,
-                                   @"(^|[^a-zA-Z0-9_/])([@＠]+)([a-zA-Z0-9_]{1,20}/[a-zA-Z][a-zA-Z0-9\p{IsLatin-1Supplement}\-]{0,79})",
-                                   "$1$2<a href=\"/$3\">$3</a>");
-
-            var m = Regex.Match(retStr, "(^|[^a-zA-Z0-9_])[@＠]([a-zA-Z0-9_]{1,20})");
-            while (m.Success)
-            {
-                if (!AtList.Contains(m.Result("$2").ToLower())) AtList.Add(m.Result("$2").ToLower());
-                m = m.NextMatch();
-            }
-            //@先をリンクに置換
-            retStr = Regex.Replace(retStr,
-                                   "(^|[^a-zA-Z0-9_/])([@＠])([a-zA-Z0-9_]{1,20})",
-                                   "$1$2<a href=\"/$3\">$3</a>");
-
-            //ハッシュタグを抽出し、リンクに置換
-            var anchorRange = new List<range>();
-            for (int i = 0; i < retStr.Length; i++)
-            {
-                var index = retStr.IndexOf("<a ", i);
-                if (index > -1 && index < retStr.Length)
-                {
-                    i = index;
-                    var toIndex = retStr.IndexOf("</a>", index);
-                    if (toIndex > -1)
-                    {
-                        anchorRange.Add(new range(index, toIndex + 3));
-                        i = toIndex;
-                    }
-                }
-            }
-            //retStr = Regex.Replace(retStr,
-            //                       "(^|[^a-zA-Z0-9/&])([#＃])([0-9a-zA-Z_]*[a-zA-Z_]+[a-zA-Z0-9_\xc0-\xd6\xd8-\xf6\xf8-\xff]*)",
-            //                       new MatchEvaluator(Function(mh As Match)
-            //                                              foreach (var rng in anchorRange)
-            //                                              {
-            //                                                  if (mh.Index >= rng.fromIndex &&
-            //                                                   mh.Index <= rng.toIndex) return mh.Result("$0");
-            //                                              }
-            //                                              if (IsNumeric(mh.Result("$3"))) return mh.Result("$0");
-            //                                              lock (LockObj)
-            //                                              {
-            //                                                  _hashList.Add("#" + mh.Result("$3"))
-            //                                              }
-            //                                              return mh.Result("$1") + "<a href=\"" + _protocol + "twitter.com/search?q=%23" + mh.Result("$3") + "\">" + mh.Result("$2$3") + "</a>";
-            //                                          }),
-            //                                      RegexOptions.IgnoreCase)
-            retStr = Regex.Replace(retStr,
-                                   HASHTAG,
-                                   new MatchEvaluator(mh =>
-                                                      {
-                                                          foreach (var rng in anchorRange)
-                                                          {
-                                                              if (mh.Index >= rng.fromIndex &&
-                                                               mh.Index <= rng.toIndex) return mh.Result("$0");
-                                                          }
-                                                          lock (LockObj)
-                                                          {
-                                                              _hashList.Add("#" + mh.Result("$3"));
-                                                          }
-                                                          return mh.Result("$1") + "<a href=\"https://twitter.com/search?q=%23" + mh.Result("$3") + "\">" + mh.Result("$2$3") + "</a>";
-                                                      }),
-                                                  RegexOptions.IgnoreCase);
-
-
-            retStr = Regex.Replace(retStr, "(^|[^a-zA-Z0-9_/&#＃@＠>=.~])(sm|nm)([0-9]{1,10})", "$1<a href=\"http://www.nicovideo.jp/watch/$2$3\">$2$3</a>");
-
-            retStr = retStr.Replace("<<<<<tweenだいなり>>>>>", "&gt;").Replace("<<<<<tweenしょうなり>>>>>", "&lt;");
-
-            //retStr = AdjustHtml(ShortUrl.Resolve(PreProcessUrl(retStr), true)) //IDN置換、短縮Uri解決、@リンクを相対→絶対にしてtarget属性付与
-            retStr = AdjustHtml(PreProcessUrl(retStr)); //IDN置換、短縮Uri解決、@リンクを相対→絶対にしてtarget属性付与
-            return retStr;
-        }
-
         public async Task<string> CreateHtmlAnchorAsync(string text, List<string> AtList, TwitterEntities entities, List<MediaInfo> media)
         {
             if (entities != null)
@@ -3144,52 +3020,14 @@ namespace OpenTween
                     pos++;
             }
 
-            var urlMatches = Regex.Matches(postText, Twitter.rgUrl, RegexOptions.IgnoreCase).Cast<Match>();
-            foreach (var m in urlMatches)
+            var urls = TweetExtractor.ExtractUrls(postText);
+            foreach (var url in urls)
             {
-                var before = m.Groups["before"].Value;
-                var url = m.Groups["url"].Value;
-                var protocol = m.Groups["protocol"].Value;
-                var domain = m.Groups["domain"].Value;
-                var path = m.Groups["path"].Value;
-                if (protocol.Length == 0)
-                {
-                    if (Regex.IsMatch(before, Twitter.url_invalid_without_protocol_preceding_chars))
-                        continue;
+                var shortUrlLength = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    ? this.Configuration.ShortUrlLengthHttps
+                    : this.Configuration.ShortUrlLength;
 
-                    var validUrl = false;
-                    string lasturl = null;
-
-                    var last_url_invalid_match = false;
-                    var domainMatches = Regex.Matches(domain, Twitter.url_valid_ascii_domain, RegexOptions.IgnoreCase).Cast<Match>();
-                    foreach (var mm in domainMatches)
-                    {
-                        lasturl = mm.Value;
-                        last_url_invalid_match = Regex.IsMatch(lasturl, Twitter.url_invalid_short_domain, RegexOptions.IgnoreCase);
-                        if (!last_url_invalid_match)
-                        {
-                            validUrl = true;
-                        }
-                    }
-
-                    if (last_url_invalid_match && path.Length != 0)
-                    {
-                        validUrl = true;
-                    }
-
-                    if (validUrl)
-                    {
-                        textLength += this.Configuration.ShortUrlLength - url.Length;
-                    }
-                }
-                else
-                {
-                    var shortUrlLength = protocol == "https://"
-                        ? this.Configuration.ShortUrlLengthHttps
-                        : this.Configuration.ShortUrlLength;
-
-                    textLength += shortUrlLength - url.Length;
-                }
+                textLength += shortUrlLength - url.Length;
             }
 
             if (isDm)
@@ -3197,6 +3035,7 @@ namespace OpenTween
             else
                 return 140 - textLength;
         }
+
 
 #region "UserStream"
         private string trackWord_ = "";
@@ -3432,7 +3271,7 @@ namespace OpenTween
                 Target = string.Format("@{0}:{1}", new[]
                 {
                     xElm.XPathSelectElement("/retweeted_status/user/screen_name").Value,
-                    xElm.XPathSelectElement("/retweeted_status/text").Value,
+                    WebUtility.HtmlDecode(xElm.XPathSelectElement("/retweeted_status/text").Value),
                 }),
                 Id = long.Parse(xElm.XPathSelectElement("/retweeted_status/id_str").Value),
             };

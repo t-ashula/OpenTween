@@ -1211,7 +1211,7 @@ namespace OpenTween
                 }
                 catch (Exception)
                 {
-                    tb.TabName = _statuses.GetUniqueTabName();
+                    tb.TabName = _statuses.MakeTabName("MyTab");
                     _statuses.Tabs.Add(tb.TabName, tb);
                 }
             }
@@ -2187,9 +2187,7 @@ namespace OpenTween
             else
                 read = this._initial && this._cfgCommon.Read;
 
-            p.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText5 +
-                (loadMore ? "-1" : "1") +
-                Properties.Resources.GetTimelineWorker_RunWorkerCompletedText6);
+            p.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText5, loadMore ? -1 : 1));
 
             await Task.Run(() =>
             {
@@ -2277,9 +2275,7 @@ namespace OpenTween
             else
                 read = this._initial && this._cfgCommon.Read;
 
-            p.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText4 +
-                (loadMore ? "-1" : "1") +
-                Properties.Resources.GetTimelineWorker_RunWorkerCompletedText6);
+            p.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText4, loadMore ? -1 : 1));
 
             await Task.Run(() =>
             {
@@ -2336,9 +2332,7 @@ namespace OpenTween
             else
                 read = this._initial && this._cfgCommon.Read;
 
-            p.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText8 +
-                (loadMore ? "-1" : "1") +
-                Properties.Resources.GetTimelineWorker_RunWorkerCompletedText6);
+            p.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText8, loadMore ? -1 : 1));
 
             await Task.Run(() =>
             {
@@ -2415,7 +2409,9 @@ namespace OpenTween
 
         private Task GetPublicSearchAllAsync()
         {
-            return this.GetPublicSearchAsync(null, loadMore: false);
+            var tabs = this._statuses.GetTabsByType(MyCommon.TabUsageType.PublicSearch);
+
+            return this.GetPublicSearchAsync(tabs, loadMore: false);
         }
 
         private Task GetPublicSearchAsync(TabClass tab)
@@ -2423,17 +2419,18 @@ namespace OpenTween
             return this.GetPublicSearchAsync(tab, loadMore: false);
         }
 
-        private async Task GetPublicSearchAsync(TabClass tab, bool loadMore)
+        private Task GetPublicSearchAsync(TabClass tab, bool loadMore)
+        {
+            return this.GetPublicSearchAsync(new[] { tab }, loadMore);
+        }
+
+        private async Task GetPublicSearchAsync(IEnumerable<TabClass> tabs, bool loadMore)
         {
             await this.workerSemaphore.WaitAsync();
 
             try
             {
                 var progress = new Progress<string>(x => this.StatusLabel.Text = x);
-
-                var tabs = tab != null
-                    ? new[] { tab }.AsEnumerable()
-                    : this._statuses.GetTabsByType(MyCommon.TabUsageType.PublicSearch);
 
                 await this.GetPublicSearchAsyncInternal(progress, this.workerCts.Token, tabs, loadMore);
             }
@@ -2502,7 +2499,9 @@ namespace OpenTween
 
         private Task GetUserTimelineAllAsync()
         {
-            return this.GetUserTimelineAsync(null, loadMore: false);
+            var tabs = this._statuses.GetTabsByType(MyCommon.TabUsageType.UserTimeline);
+
+            return this.GetUserTimelineAsync(tabs, loadMore: false);
         }
 
         private Task GetUserTimelineAsync(TabClass tab)
@@ -2510,17 +2509,18 @@ namespace OpenTween
             return this.GetUserTimelineAsync(tab, loadMore: false);
         }
 
-        private async Task GetUserTimelineAsync(TabClass tab, bool loadMore)
+        private Task GetUserTimelineAsync(TabClass tab, bool loadMore)
+        {
+            return this.GetUserTimelineAsync(new[] { tab }, loadMore: false);
+        }
+
+        private async Task GetUserTimelineAsync(IEnumerable<TabClass> tabs, bool loadMore)
         {
             await this.workerSemaphore.WaitAsync();
 
             try
             {
                 var progress = new Progress<string>(x => this.StatusLabel.Text = x);
-
-                var tabs = tab != null
-                    ? new[] { tab }.AsEnumerable()
-                    : this._statuses.GetTabsByType(MyCommon.TabUsageType.UserTimeline);
 
                 await this.GetUserTimelineAsyncInternal(progress, this.workerCts.Token, tabs, loadMore);
             }
@@ -2586,7 +2586,9 @@ namespace OpenTween
 
         private Task GetListTimelineAllAsync()
         {
-            return this.GetListTimelineAsync(null, loadMore: false);
+            var tabs = this._statuses.GetTabsByType(MyCommon.TabUsageType.Lists);
+
+            return this.GetListTimelineAsync(tabs, loadMore: false);
         }
 
         private Task GetListTimelineAsync(TabClass tab)
@@ -2594,17 +2596,18 @@ namespace OpenTween
             return this.GetListTimelineAsync(tab, loadMore: false);
         }
 
-        private async Task GetListTimelineAsync(TabClass tab, bool loadMore)
+        private Task GetListTimelineAsync(TabClass tab, bool loadMore)
+        {
+            return this.GetListTimelineAsync(new[] { tab }, loadMore: false);
+        }
+
+        private async Task GetListTimelineAsync(IEnumerable<TabClass> tabs, bool loadMore)
         {
             await this.workerSemaphore.WaitAsync();
 
             try
             {
                 var progress = new Progress<string>(x => this.StatusLabel.Text = x);
-
-                var tabs = tab != null
-                    ? new[] { tab }.AsEnumerable()
-                    : this._statuses.GetTabsByType(MyCommon.TabUsageType.Lists);
 
                 await this.GetListTimelineAsyncInternal(progress, this.workerCts.Token, tabs, loadMore);
             }
@@ -2778,10 +2781,7 @@ namespace OpenTween
                 {
                     allCount++;
 
-                    p.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText15 +
-                        allCount + "/" + statusIds.Count +
-                        Properties.Resources.GetTimelineWorker_RunWorkerCompletedText16 +
-                        failedCount);
+                    p.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText15, allCount, statusIds.Count, failedCount));
 
                     var post = tab.Posts[statusId];
 
@@ -2899,10 +2899,7 @@ namespace OpenTween
 
                     var post = tab.Posts[statusId];
 
-                    p.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText17 +
-                        allCount + "/" + statusIds.Count +
-                        Properties.Resources.GetTimelineWorker_RunWorkerCompletedText18 +
-                        failedCount);
+                    p.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText17, allCount, statusIds.Count, failedCount));
 
                     if (!post.IsFav)
                         continue;
@@ -8859,7 +8856,7 @@ namespace OpenTween
             MyCommon.TabUsageType tabUsage;
             using (InputTabName inputName = new InputTabName())
             {
-                inputName.TabName = _statuses.GetUniqueTabName();
+                inputName.TabName = _statuses.MakeTabName("MyTab");
                 inputName.IsShowUsage = true;
                 inputName.ShowDialog();
                 if (inputName.DialogResult == DialogResult.Cancel) return;
@@ -9168,7 +9165,7 @@ namespace OpenTween
                 {
                     using (InputTabName inputName = new InputTabName())
                     {
-                        inputName.TabName = _statuses.GetUniqueTabName();
+                        inputName.TabName = _statuses.MakeTabName("MyTab");
                         inputName.ShowDialog();
                         if (inputName.DialogResult == DialogResult.Cancel) return false;
                         tabName = inputName.TabName;
@@ -9785,6 +9782,10 @@ namespace OpenTween
                 {
                     this.SplitContainer3.SplitterDistance = previewDistance;
                 }
+
+                // Panel2Collapsed は SplitterDistance の設定を終えるまで true にしない
+                this.SplitContainer3.Panel2Collapsed = true;
+
                 _initialLayout = false;
             }
             if (this.WindowState != FormWindowState.Minimized)
@@ -13413,12 +13414,6 @@ namespace OpenTween
         private void tweetThumbnail1_ThumbnailLoading(object sender, EventArgs e)
         {
             this.SplitContainer3.Panel2Collapsed = false;
-
-            // PreviewDistance が起動のたびに広がっていく問題の回避策
-            // FixedPanel が Panel2 に設定された状態で Panel2 を開くと、初回だけ SplitterDistance が再計算されておかしくなるため、
-            // None で開いた後に設定するようにする
-            if (this.SplitContainer3.FixedPanel == FixedPanel.None)
-                this.SplitContainer3.FixedPanel = FixedPanel.Panel2;
         }
 
         private async void tweetThumbnail1_ThumbnailDoubleClick(object sender, ThumbnailDoubleClickEventArgs e)
