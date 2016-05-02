@@ -34,7 +34,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween.Connection
 {
@@ -71,7 +71,7 @@ namespace OpenTween.Connection
 
         public bool CheckFileExtension(string fileExtension)
         {
-            return this.pictureExt.Contains(fileExtension.ToLower());
+            return this.pictureExt.Contains(fileExtension.ToLowerInvariant());
         }
 
         public bool CheckFileSize(string fileExtension, long fileSize)

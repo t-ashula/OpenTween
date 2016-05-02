@@ -38,8 +38,9 @@ using System.Text.RegularExpressions;
 using System.Web;
 using System.IO;
 using System.Net;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 using OpenTween.Connection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OpenTween
 {
@@ -62,15 +63,22 @@ namespace OpenTween
             this.LabelScreenName.Font = this.ReplaceToGlobalFont(this.LabelScreenName.Font);
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
         private void CancelLoading()
         {
-            var newTokenSource = new CancellationTokenSource();
-            var oldTokenSource = Interlocked.Exchange(ref this.cancellationTokenSource, newTokenSource);
-
-            if (oldTokenSource != null)
+            CancellationTokenSource newTokenSource = null, oldTokenSource = null;
+            try
             {
-                oldTokenSource.Cancel();
-                oldTokenSource.Dispose();
+                newTokenSource = new CancellationTokenSource();
+                oldTokenSource = Interlocked.Exchange(ref this.cancellationTokenSource, newTokenSource);
+            }
+            finally
+            {
+                if (oldTokenSource != null)
+                {
+                    oldTokenSource.Cancel();
+                    oldTokenSource.Dispose();
+                }
             }
         }
 
@@ -143,25 +151,26 @@ namespace OpenTween
 
             await Task.WhenAll(new[]
             {
-                this.SetDescriptionAsync(user.Description, cancellationToken),
+                this.SetDescriptionAsync(user.Description, user.Entities.Description, cancellationToken),
                 this.SetRecentStatusAsync(user.Status, cancellationToken),
-                this.SetLinkLabelWebAsync(user.Url, cancellationToken),
+                this.SetLinkLabelWebAsync(user.Url, user.Entities.Url, cancellationToken),
                 this.SetUserImageAsync(user.ProfileImageUrlHttps, cancellationToken),
                 this.LoadFriendshipAsync(user.ScreenName, cancellationToken),
             });
         }
 
-        private async Task SetDescriptionAsync(string descriptionText, CancellationToken cancellationToken)
+        private async Task SetDescriptionAsync(string descriptionText, TwitterEntities entities, CancellationToken cancellationToken)
         {
             if (descriptionText != null)
             {
-                var atlist = new List<string>();
+                foreach (var entity in entities.Urls)
+                    entity.ExpandedUrl = await ShortUrl.Instance.ExpandUrlAsync(entity.ExpandedUrl);
 
-                // description に含まれる < > " の記号のみエスケープを一旦解除する
-                var decodedText = descriptionText.Replace("&lt;", "<").Replace("&gt;", ">").Replace("&quot;", "\"");
+                // user.entities には urls 以外のエンティティが含まれていないため、テキストをもとに生成する
+                entities.Hashtags = TweetExtractor.ExtractHashtagEntities(descriptionText).ToArray();
+                entities.UserMentions = TweetExtractor.ExtractMentionEntities(descriptionText).ToArray();
 
-                var html = WebUtility.HtmlEncode(decodedText);
-                html = await this.twitter.CreateHtmlAnchorAsync(html, atlist, null);
+                var html = TweetFormatter.AutoLinkHtml(descriptionText, entities);
                 html = this.mainForm.createDetailHtml(html);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -206,16 +215,17 @@ namespace OpenTween
             });
         }
 
-        private async Task SetLinkLabelWebAsync(string uri, CancellationToken cancellationToken)
+        private async Task SetLinkLabelWebAsync(string uri, TwitterEntities entities, CancellationToken cancellationToken)
         {
             if (uri != null)
             {
-                var expandedUrl = await ShortUrl.Instance.ExpandUrlAsync(uri);
+                var origUrl = entities?.Urls[0].ExpandedUrl ?? uri;
+                var expandedUrl = await ShortUrl.Instance.ExpandUrlAsync(origUrl);
 
                 if (cancellationToken.IsCancellationRequested)
                     return;
 
-                this.LinkLabelWeb.Text = uri;
+                this.LinkLabelWeb.Text = expandedUrl;
                 this.LinkLabelWeb.Tag = expandedUrl;
                 this.ToolTip1.SetToolTip(this.LinkLabelWeb, expandedUrl);
             }
@@ -229,11 +239,14 @@ namespace OpenTween
 
         private async Task SetRecentStatusAsync(TwitterStatus status, CancellationToken cancellationToken)
         {
-            var atlist = new List<string>();
-
             if (status != null)
             {
-                var html = await this.twitter.CreateHtmlAnchorAsync(status.Text, atlist, status.MergedEntities, null);
+                var entities = status.MergedEntities;
+
+                foreach (var entity in entities.Urls)
+                    entity.ExpandedUrl = await ShortUrl.Instance.ExpandUrlAsync(entity.ExpandedUrl);
+
+                var html = TweetFormatter.AutoLinkHtml(status.Text, entities);
                 html = this.mainForm.createDetailHtml(html +
                     " Posted at " + MyCommon.DateTimeParse(status.CreatedAt) +
                     " via " + status.Source);
@@ -655,7 +668,7 @@ namespace OpenTween
 
         private bool IsValidExtension(string ext)
         {
-            ext = ext.ToLower();
+            ext = ext.ToLowerInvariant();
 
             return ext.Equals(".jpg", StringComparison.Ordinal) ||
                 ext.Equals(".jpeg", StringComparison.Ordinal) ||

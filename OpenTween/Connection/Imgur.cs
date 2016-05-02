@@ -28,7 +28,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween.Connection
 {
@@ -118,6 +118,10 @@ namespace OpenTween.Connection
             catch (HttpRequestException ex)
             {
                 throw new WebApiException("Err:" + ex.Message, ex);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new WebApiException("Err:Timeout", ex);
             }
 
             var imageElm = xml.Element("data");

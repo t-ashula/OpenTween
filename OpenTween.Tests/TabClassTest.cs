@@ -257,6 +257,25 @@ namespace OpenTween
         }
 
         [Fact]
+        public void GetUnreadIds_Test()
+        {
+            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            tab.UnreadManage = true;
+
+            Assert.Empty(tab.GetUnreadIds());
+
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = true });
+            tab.AddSubmit();
+
+            Assert.Equal(new[] { 100L }, tab.GetUnreadIds());
+
+            tab.SetReadState(100L, true); // 既読にする
+
+            Assert.Empty(tab.GetUnreadIds());
+        }
+
+        [Fact]
         public void SetReadState_MarkAsReadTest()
         {
             var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
@@ -367,6 +386,52 @@ namespace OpenTween
             filter.FilterSource = "OpenTween";
 
             Assert.False(tab.FilterModified);
+        }
+
+        [Fact]
+        public void SearchPostsAll_Test()
+        {
+            var tab = new TabClass { TabType = MyCommon.TabUsageType.PublicSearch };
+
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
+
+            tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
+            tab.AddSubmit();
+
+            // インデックス番号 0 から開始 → 0, 1, 2, 3, 4 の順に検索
+            var result = tab.SearchPostsAll(x => x.Contains("a"), startIndex: 0);
+            Assert.Equal(new[] { 0, 3 }, result);
+
+            // インデックス番号 2 から開始 → 2, 3, 4, 0, 1 の順に検索
+            result = tab.SearchPostsAll(x => x.Contains("a"), startIndex: 2);
+            Assert.Equal(new[] { 3, 0 }, result);
+        }
+
+        [Fact]
+        public void SearchPostsAll_ReverseOrderTest()
+        {
+            var tab = new TabClass { TabType = MyCommon.TabUsageType.PublicSearch };
+
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
+            tab.AddPostToInnerStorage(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
+
+            tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
+            tab.AddSubmit();
+
+            // インデックス番号 4 から逆順に開始 → 4, 3, 2, 1, 0 の順に検索
+            var result = tab.SearchPostsAll(x => x.Contains("a"), startIndex: 4, reverse: true);
+            Assert.Equal(new[] { 3, 0 }, result);
+
+            // インデックス番号 2 から逆順に開始 → 2, 1, 0, 4, 3 の順に検索
+            result = tab.SearchPostsAll(x => x.Contains("a"), startIndex: 2, reverse: true);
+            Assert.Equal(new[] { 0, 3 }, result);
         }
     }
 

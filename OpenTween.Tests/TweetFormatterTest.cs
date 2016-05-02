@@ -23,7 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 using Xunit;
 using Xunit.Extensions;
 
@@ -133,6 +133,37 @@ namespace OpenTween
             };
 
             var expected = "<a href=\"http://t.co/h5dCr4ftN4\" title=\"http://twitter.com/kim_upsilon/status/426404550371598337/photo/1\">pic.twitter.com/h5dCr4ftN4</a>";
+            Assert.Equal(expected, TweetFormatter.AutoLinkHtml(text, entities));
+        }
+
+        [Fact]
+        public void FormatMediaEntity_AltTextTest()
+        {
+            var text = "http://t.co/h5dCr4ftN4";
+            var entities = new[]
+            {
+                new TwitterEntityMedia
+                {
+                    Indices = new[] { 0, 22 },
+                    Sizes = new TwitterMediaSizes
+                    {
+                        Large = new TwitterMediaSizes.Size { Resize = "fit", Height = 329, Width = 1024 },
+                        Medium = new TwitterMediaSizes.Size { Resize = "fit", Height = 204, Width = 600 },
+                        Small = new TwitterMediaSizes.Size { Resize = "fit", Height = 116, Width = 340 },
+                        Thumb = new TwitterMediaSizes.Size { Resize = "crop", Height = 150, Width = 150 },
+                    },
+                    Type = "photo",
+                    Id = 426404550379986940L,
+                    MediaUrl = "http://pbs.twimg.com/media/BerkrewCYAAV4Kf.png",
+                    MediaUrlHttps = "https://pbs.twimg.com/media/BerkrewCYAAV4Kf.png",
+                    Url = "http://t.co/h5dCr4ftN4",
+                    DisplayUrl = "pic.twitter.com/h5dCr4ftN4",
+                    ExpandedUrl = "http://twitter.com/kim_upsilon/status/426404550371598337/photo/1",
+                    AltText = "ATOKの推測変換候補のスクリーンショット",
+                },
+            };
+
+            var expected = "<a href=\"http://t.co/h5dCr4ftN4\" title=\"ATOKの推測変換候補のスクリーンショット\">pic.twitter.com/h5dCr4ftN4</a>";
             Assert.Equal(expected, TweetFormatter.AutoLinkHtml(text, entities));
         }
 

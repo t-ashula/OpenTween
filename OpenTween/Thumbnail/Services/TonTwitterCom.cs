@@ -49,13 +49,13 @@ namespace OpenTween.Thumbnail.Services
                 if (InitializeOAuthToken == null)
                     return null;
 
-                if (!url.StartsWith(@"https://ton.twitter.com/1.1/ton/data/"))
+                if (!url.StartsWith(@"https://ton.twitter.com/1.1/ton/data/", StringComparison.Ordinal))
                     return null;
 
                 return new TonTwitterCom.Thumbnail
                 {
-                    ImageUrl = url,
-                    ThumbnailUrl = url,
+                    MediaPageUrl = url,
+                    ThumbnailImageUrl = url,
                     TooltipText = null,
                     FullSizeImageUrl = url,
                 };
@@ -73,7 +73,7 @@ namespace OpenTween.Thumbnail.Services
                     TonTwitterCom.InitializeOAuthToken(oauth);
 
                     Stream response = null;
-                    var statusCode = oauth.GetContent("GET", new Uri(this.ThumbnailUrl), null, ref response, Networking.GetUserAgentString());
+                    var statusCode = oauth.GetContent("GET", new Uri(this.ThumbnailImageUrl), null, ref response, Networking.GetUserAgentString());
 
                     using (response)
                     {

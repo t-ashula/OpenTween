@@ -990,7 +990,7 @@ namespace OpenTween
             MyCommon.TabUsageType tabType;
             using (InputTabName inputName = new InputTabName())
             {
-                inputName.TabName = _sts.GetUniqueTabName();
+                inputName.TabName = _sts.MakeTabName("MyTab");
                 inputName.IsShowUsage = true;
                 inputName.ShowDialog();
                 if (inputName.DialogResult == DialogResult.Cancel) return;
@@ -1455,9 +1455,9 @@ namespace OpenTween
             }
         }
 
-        protected override void OnFontChanged(EventArgs e)
+        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
         {
-            base.OnFontChanged(e);
+            base.ScaleControl(factor, specified);
             this.ListFilters.ItemHeight = this.ListFilters.Font.Height;
         }
     }

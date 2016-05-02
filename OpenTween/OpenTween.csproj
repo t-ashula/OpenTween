@@ -68,22 +68,22 @@
       <DependentUpon>ApiInfoDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Api\ApiLimit.cs" />
-    <Compile Include="Api\GeoJson.cs" />
-    <Compile Include="Api\TwitterConfiguration.cs" />
-    <Compile Include="Api\TwitterEntity.cs" />
-    <Compile Include="Api\TwitterError.cs" />
-    <Compile Include="Api\TwitterFriendship.cs" />
-    <Compile Include="Api\TwitterList.cs" />
-    <Compile Include="Api\TwitterPageable.cs">
+    <Compile Include="Api\DataModel\GeoJson.cs" />
+    <Compile Include="Api\DataModel\TwitterConfiguration.cs" />
+    <Compile Include="Api\DataModel\TwitterEntity.cs" />
+    <Compile Include="Api\DataModel\TwitterError.cs" />
+    <Compile Include="Api\DataModel\TwitterFriendship.cs" />
+    <Compile Include="Api\DataModel\TwitterList.cs" />
+    <Compile Include="Api\DataModel\TwitterPageable.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Api\TwitterPlace.cs" />
-    <Compile Include="Api\TwitterSearchResult.cs" />
-    <Compile Include="Api\TwitterStatus.cs" />
-    <Compile Include="Api\TwitterStreamEvent.cs" />
-    <Compile Include="Api\TwitterUploadMediaResult.cs" />
-    <Compile Include="Api\TwitterUser.cs" />
-    <Compile Include="Api\TwitterApiAccessLevel.cs" />
+    <Compile Include="Api\DataModel\TwitterPlace.cs" />
+    <Compile Include="Api\DataModel\TwitterSearchResult.cs" />
+    <Compile Include="Api\DataModel\TwitterStatus.cs" />
+    <Compile Include="Api\DataModel\TwitterStreamEvent.cs" />
+    <Compile Include="Api\DataModel\TwitterUploadMediaResult.cs" />
+    <Compile Include="Api\DataModel\TwitterUser.cs" />
+    <Compile Include="Api\DataModel\TwitterApiAccessLevel.cs" />
     <Compile Include="Api\TwitterApiStatus.cs" />
     <Compile Include="ApplicationEvents.cs">
       <SubType>Code</SubType>
@@ -141,7 +141,16 @@
     <Compile Include="IndexedSortedSet.cs" />
     <Compile Include="MediaItem.cs" />
     <Compile Include="MouseWheelMessageFilter.cs" />
+    <Compile Include="NotifyPropertyChangedBase.cs" />
+    <Compile Include="SendErrorReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SendErrorReportForm.Designer.cs">
+      <DependentUpon>SendErrorReportForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="ShortcutCommand.cs" />
+    <Compile Include="Thumbnail\Services\PbsTwimgCom.cs" />
+    <Compile Include="TweetExtractor.cs" />
     <Compile Include="WaitingDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -499,6 +508,12 @@
     <EmbeddedResource Include="MediaSelector.zh-CHS.resx">
       <DependentUpon>MediaSelector.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="SendErrorReportForm.en.resx">
+      <DependentUpon>SendErrorReportForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SendErrorReportForm.resx">
+      <DependentUpon>SendErrorReportForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="WaitingDialog.resx">
       <DependentUpon>WaitingDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -779,6 +794,7 @@
     <Content Include="Resources\InitialImage.png" />
     <Content Include="Resources\LogoImage.png" />
     <Content Include="Resources\MultiMediaImage.png" />
+    <None Include="ErrorReport.datasource" />
     <None Include="Resources\PlayableOverlayImage.png" />
     <Content Include="Resources\re.ico" />
     <Content Include="Resources\re2.ico" />

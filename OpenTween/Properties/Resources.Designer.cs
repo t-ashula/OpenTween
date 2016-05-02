@@ -61,6 +61,15 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
+        ///   発言一覧 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AddNewTab_ListView_AccessibleName {
+            get {
+                return ResourceManager.GetString("AddNewTab_ListView_AccessibleName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   (新規タブ) に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string AddNewTabText1 {
@@ -634,20 +643,17 @@ namespace OpenTween.Properties {
         /// <summary>
         ///   更新履歴
         ///
-        ///==== Ver 1.3.0-dev(2015/xx/xx)
+        ///==== Ver 1.3.3-dev(2016/xx/xx)
         ///
-        ///==== Ver 1.2.9(2015/09/23)
-        /// * NEW: ウィンドウ最大化中でも発言詳細部やサムネイルの幅の変更が設定に保存されるようしました
-        /// * NEW: タイトルバーに表示する「発言数/フォロー数/フォロワー数」の情報が起動直後から反映されるようにしました
-        /// * CHG: 起動時にTwitter APIへのアクセスに失敗した場合はエラーダイアログを表示するようにしました
-        /// * FIX: ハッシュタグ付加機能が動作しない不具合を修正
-        /// * FIX: サムネイル画像にフォーカスがない状態でマウスホイールによる画像の切り替えが動作しない不具合を回避
-        /// * FIX: 起動直後の初回のDM一覧取得が失敗する不具合を修正
-        ///
-        ///==== Ver 1.2.8(2015/09/06)
-        /// * NEW: DMの文字数制限の緩和（上限10,000文字）に対応しました（投稿および表示）
-        /// * NEW: サムネイル画像が複数枚ある場合に、マウスホイールでも画像を切り替えられるようにしました
-        /// * NEW: サムネイル [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
+        ///==== Ver 1.3.2(2016/04/12)
+        /// * NEW: touch.pixiv.net のサムネイル表示に対応 (pixiv.net は既に対応しています)
+        /// * NEW: pic.twitter.com の画像に設定された代替テキストの取得に対応
+        ///  - 代替テキストが設定された画像の場合、発言一覧に含まれる画像 URL が代替テキストに置き換わって表示されます
+        /// * CHG: スクリーンリーダーでの画面の読み上げを改善
+        /// * FIX: 投稿欄の複数行入力が有効かつCtrl+Enterで投稿する設定の状態でハッシュタグの自動付与が行われない不具合を修正 (thx @nt776!)
+        /// * FIX: タブレット端末などでサムネイル画像が1枚のみ表示された状態で2本指スクロールするとエラーが発生する問題を回避
+        /// * FIX: 発言詳細部に表示されるハッシュタグやメンションで「URLをコピー」が機能しない不具合を修正 (thx @ufoprincess!)
+        /// * FIX: 複数のタブで同時に新着ツイート [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string ChangeLog {
             get {
@@ -1280,7 +1286,7 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   Fav追加( に類似しているローカライズされた文字列を検索します。
+        ///   Fav追加({0}/{1}) 失敗:{2} に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetTimelineWorker_RunWorkerCompletedText15 {
             get {
@@ -1289,29 +1295,11 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   ) 失敗: に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string GetTimelineWorker_RunWorkerCompletedText16 {
-            get {
-                return ResourceManager.GetString("GetTimelineWorker_RunWorkerCompletedText16", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Fav削除( に類似しているローカライズされた文字列を検索します。
+        ///   Fav削除({0}/{1}) 失敗:{2} に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetTimelineWorker_RunWorkerCompletedText17 {
             get {
                 return ResourceManager.GetString("GetTimelineWorker_RunWorkerCompletedText17", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   ) 失敗: に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string GetTimelineWorker_RunWorkerCompletedText18 {
-            get {
-                return ResourceManager.GetString("GetTimelineWorker_RunWorkerCompletedText18", resourceCulture);
             }
         }
         
@@ -1343,7 +1331,7 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   Reply更新中... に類似しているローカライズされた文字列を検索します。
+        ///   Reply更新中...{0}pages に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetTimelineWorker_RunWorkerCompletedText4 {
             get {
@@ -1352,7 +1340,7 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   Recent更新中... に類似しているローカライズされた文字列を検索します。
+        ///   Recent更新中...{0}pages に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetTimelineWorker_RunWorkerCompletedText5 {
             get {
@@ -1361,16 +1349,7 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   pages に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string GetTimelineWorker_RunWorkerCompletedText6 {
-            get {
-                return ResourceManager.GetString("GetTimelineWorker_RunWorkerCompletedText6", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   DMRcv更新中... に類似しているローカライズされた文字列を検索します。
+        ///   DMRcv更新中...{0}pages に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetTimelineWorker_RunWorkerCompletedText8 {
             get {
@@ -1447,6 +1426,15 @@ namespace OpenTween.Properties {
         internal static string IDRuleMenuItem_ClickText7 {
             get {
                 return ResourceManager.GetString("IDRuleMenuItem_ClickText7", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   [画像: {0}] に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ImageAltText {
+            get {
+                return ResourceManager.GetString("ImageAltText", resourceCulture);
             }
         }
         
@@ -2027,24 +2015,6 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   新着 に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RefreshDirectMessageText1 {
-            get {
-                return ResourceManager.GetString("RefreshDirectMessageText1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   件 に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RefreshDirectMessageText2 {
-            get {
-                return ResourceManager.GetString("RefreshDirectMessageText2", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Recent更新中... に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string RefreshStripMenuItem_ClickText1 {
@@ -2072,20 +2042,11 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   新着 に類似しているローカライズされた文字列を検索します。
+        ///   新着 {0} 件 に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string RefreshTimelineText1 {
+        internal static string RefreshTimeline_NotifyText {
             get {
-                return ResourceManager.GetString("RefreshTimelineText1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   件 に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RefreshTimelineText2 {
-            get {
-                return ResourceManager.GetString("RefreshTimelineText2", resourceCulture);
+                return ResourceManager.GetString("RefreshTimeline_NotifyText", resourceCulture);
             }
         }
         
@@ -2349,6 +2310,24 @@ namespace OpenTween.Properties {
         internal static string SearchResults_TabName {
             get {
                 return ResourceManager.GetString("SearchResults_TabName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DM の送信が完了しました に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SendErrorReport_DmSendCompleted {
+            get {
+                return ResourceManager.GetString("SendErrorReport_DmSendCompleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DM の送信に失敗しました に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SendErrorReport_DmSendError {
+            get {
+                return ResourceManager.GetString("SendErrorReport_DmSendError", resourceCulture);
             }
         }
         

@@ -51,12 +51,13 @@ namespace OpenTween.Thumbnail.Services
         {
             // 前処理で動画用URLが準備されていればそれを使う
             var mediaInfo = post.Media.FirstOrDefault(x => x.Url == url);
-            if (mediaInfo.VideoUrl != null)
+            if (mediaInfo?.VideoUrl != null)
             {
                 return new ThumbnailInfo
                 {
-                    ImageUrl = mediaInfo.VideoUrl,
-                    ThumbnailUrl = url,
+                    MediaPageUrl = mediaInfo.VideoUrl,
+                    ThumbnailImageUrl = url,
+                    TooltipText = mediaInfo.AltText,
                     IsPlayable = true,
                 };
             }

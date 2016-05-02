@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Extensions;
 
@@ -33,39 +34,6 @@ namespace OpenTween
     {
         class TestPostClass : PostClass
         {
-            public TestPostClass(
-                string Nickname = null,
-                string textFromApi = null,
-                string text = null,
-                string ImageUrl = null,
-                string screenName = null,
-                DateTime createdAt = new DateTime(),
-                long statusId = 0L,
-                bool IsFav = false,
-                bool IsRead = false,
-                bool IsReply = false,
-                bool IsExcludeReply = false,
-                bool IsProtect = false,
-                bool IsOwl = false,
-                bool IsMark = false,
-                string InReplyToUser = null,
-                long? InReplyToStatusId = null,
-                string Source = null,
-                Uri SourceUri = null,
-                List<string> ReplyToList = null,
-                bool IsMe = false,
-                bool IsDm = false,
-                long userId = 0L,
-                bool FilterHit = false,
-                string RetweetedBy = null,
-                long? RetweetedId = null,
-                StatusGeo? Geo = null) :
-                base(Nickname, textFromApi, text, ImageUrl, screenName, createdAt, statusId, IsFav, IsRead,
-                IsReply, IsExcludeReply, IsProtect, IsOwl, IsMark, InReplyToUser, InReplyToStatusId, Source,
-                SourceUri, ReplyToList, IsMe, IsDm, userId, FilterHit, RetweetedBy, RetweetedId, Geo)
-            {
-            }
-
             protected override PostClass RetweetSource
             {
                 get
@@ -85,10 +53,19 @@ namespace OpenTween
         {
             PostClassTest.TestCases = new Dictionary<long, PostClass>
             {
-                [1L] = new TestPostClass(statusId: 1L),
-                [2L] = new TestPostClass(statusId: 2L, IsFav: true),
-                [3L] = new TestPostClass(statusId: 3L, IsFav: false, RetweetedId: 2L),
+                [1L] = new TestPostClass { StatusId = 1L },
+                [2L] = new TestPostClass { StatusId = 2L, IsFav = true },
+                [3L] = new TestPostClass { StatusId = 3L, IsFav = false, RetweetedId = 2L },
             };
+        }
+
+        [Fact]
+        public void CloneTest()
+        {
+            var post = new PostClass();
+            var clonePost = post.Clone();
+
+            TestUtils.CheckDeepCloning(post, clonePost);
         }
 
         [Theory]
@@ -97,7 +74,7 @@ namespace OpenTween
         [InlineData("aaa\nbbb", "aaa bbb")]
         public void TextSingleLineTest(string text, string expected)
         {
-            var post = new TestPostClass(textFromApi: text);
+            var post = new PostClass { TextFromApi = text };
 
             Assert.Equal(expected, post.TextSingleLine);
         }
@@ -309,6 +286,102 @@ namespace OpenTween
             };
 
             Assert.True(post.CanDeleteBy(selfUserId: 111L));
+        }
+
+        [Fact]
+        public void ConvertToOriginalPost_Test()
+        {
+            var retweetPost = new PostClass
+            {
+                StatusId = 100L,
+                ScreenName = "@aaa",
+                UserId = 1L,
+
+                RetweetedId = 50L,
+                RetweetedBy = "@bbb",
+                RetweetedByUserId = 2L,
+                RetweetedCount = 0,
+            };
+
+            var originalPost = retweetPost.ConvertToOriginalPost();
+
+            Assert.Equal(50L, originalPost.StatusId);
+            Assert.Equal("@aaa", originalPost.ScreenName);
+            Assert.Equal(1L, originalPost.UserId);
+
+            Assert.Equal(null, originalPost.RetweetedId);
+            Assert.Equal("", originalPost.RetweetedBy);
+            Assert.Equal(null, originalPost.RetweetedByUserId);
+            Assert.Equal(1, originalPost.RetweetedCount);
+        }
+
+        [Fact]
+        public void ConvertToOriginalPost_ErrorTest()
+        {
+            // 公式 RT でないツイート
+            var post = new PostClass { StatusId = 100L, RetweetedId = null };
+
+            Assert.Throws<InvalidOperationException>(() => post.ConvertToOriginalPost());
+        }
+
+        class FakeExpandedUrlInfo : PostClass.ExpandedUrlInfo
+        {
+            public TaskCompletionSource<string> fakeResult;
+
+            public FakeExpandedUrlInfo(string url, string expandedUrl, bool deepExpand)
+                : base(url, expandedUrl, deepExpand)
+            {
+            }
+
+            protected override async Task DeepExpandAsync()
+            {
+                this.fakeResult = new TaskCompletionSource<string>();
+                this._expandedUrl = await this.fakeResult.Task;
+            }
+        }
+
+        [Fact]
+        public async Task ExpandedUrls_BasicScenario()
+        {
+            var post = new PostClass
+            {
+                Text = "<a href=\"http://t.co/aaaaaaa\" title=\"http://t.co/aaaaaaa\">bit.ly/abcde</a>",
+                ExpandedUrls = new[]
+                {
+                    new FakeExpandedUrlInfo(
+                        // 展開前の t.co ドメインの URL
+                        url:  "http://t.co/aaaaaaa",
+
+                        // Entity の expanded_url に含まれる URL
+                        expandedUrl: "http://bit.ly/abcde",
+
+                        // expandedUrl をさらに ShortUrl クラスで再帰的に展開する
+                        deepExpand: true
+                    ),
+                },
+            };
+
+            var urlInfo = (FakeExpandedUrlInfo)post.ExpandedUrls.Single();
+
+            // ExpandedUrlInfo による展開が完了していない状態
+            //   → この段階では Entity に含まれる expanded_url の URL が使用される
+            Assert.False(urlInfo.ExpandedCompleted);
+            Assert.Equal("http://bit.ly/abcde", urlInfo.ExpandedUrl);
+            Assert.Equal("http://bit.ly/abcde", post.GetExpandedUrl("http://t.co/aaaaaaa"));
+            Assert.Equal(new[] { "http://bit.ly/abcde" }, post.GetExpandedUrls());
+            Assert.Equal("<a href=\"http://t.co/aaaaaaa\" title=\"http://bit.ly/abcde\">bit.ly/abcde</a>", post.Text);
+
+            // bit.ly 展開後の URL は「http://example.com/abcde」
+            urlInfo.fakeResult.SetResult("http://example.com/abcde");
+            await urlInfo.ExpandTask;
+
+            // ExpandedUrlInfo による展開が完了した後の状態
+            //   → 再帰的な展開後の URL が使用される
+            Assert.True(urlInfo.ExpandedCompleted);
+            Assert.Equal("http://example.com/abcde", urlInfo.ExpandedUrl);
+            Assert.Equal("http://example.com/abcde", post.GetExpandedUrl("http://t.co/aaaaaaa"));
+            Assert.Equal(new[] { "http://example.com/abcde" }, post.GetExpandedUrls());
+            Assert.Equal("<a href=\"http://t.co/aaaaaaa\" title=\"http://example.com/abcde\">bit.ly/abcde</a>", post.Text);
         }
     }
 }

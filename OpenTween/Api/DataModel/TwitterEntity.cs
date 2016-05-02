@@ -27,7 +27,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenTween.Api
+namespace OpenTween.Api.DataModel
 {
     // 参照: https://dev.twitter.com/docs/platform-objects/entities
 
@@ -111,6 +111,9 @@ namespace OpenTween.Api
 
         [DataMember(Name = "video_info", IsRequired = false)]
         public TwitterMediaVideoInfo VideoInfo { get; set; }
+
+        [DataMember(Name = "ext_alt_text", IsRequired = false)]
+        public string AltText { get; set; }
     }
 
     [DataContract]

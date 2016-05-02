@@ -35,6 +35,7 @@ using System.Collections.Generic;
 using System.IO.Compression;
 using System.Drawing;
 using OpenTween.Connection;
+using System.Net.Cache;
 
 ///<summary>
 ///HttpWebRequest,HttpWebResponseを使用した基本的な通信機能を提供する
@@ -47,6 +48,11 @@ namespace OpenTween
 {
     public class HttpConnection
     {
+        /// <summary>
+        /// キャッシュを有効にするか否か
+        /// </summary>
+        public bool CacheEnabled { get; set; } = true;
+
         /// <summary>
         /// リクエスト間で Cookie を保持するか否か
         /// </summary>
@@ -121,6 +127,9 @@ namespace OpenTween
             // KeepAlive無効なサーバー(Twitter等)に使用すると、タイムアウト後にWebExceptionが発生する場合あり
             webReq.KeepAlive = false;
 
+            if (!this.CacheEnabled)
+                webReq.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
+
             return webReq;
         }
 
@@ -183,7 +192,7 @@ namespace OpenTween
                             byte[] crlfByte = Encoding.UTF8.GetBytes("\r\n");
                             //コンテンツタイプの指定
                             string mime = "";
-                            switch (kvp.Value.Extension.ToLower())
+                            switch (kvp.Value.Extension.ToLowerInvariant())
                             {
                                 case ".jpg":
                                 case ".jpeg":
@@ -460,7 +469,7 @@ namespace OpenTween
         {
             foreach (Cookie ck in cookieCollection)
             {
-                if (ck.Domain.StartsWith("."))
+                if (ck.Domain.StartsWith(".", StringComparison.Ordinal))
                 {
                     ck.Domain = ck.Domain.Substring(1);
                     cookieContainer.Add(ck);
