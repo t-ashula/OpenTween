@@ -28,21 +28,108 @@ using System.Windows.Forms;
 using Xunit;
 using Xunit.Extensions;
 
-namespace OpenTween
+namespace OpenTween.Models
 {
-    public class TabClassTest
+    public class TabModelTest
     {
+        [Fact]
+        public void EnqueueRemovePost_Test()
+        {
+            var tab = new PublicSearchTabModel("search")
+            {
+                UnreadManage = true,
+            };
+
+            tab.AddPostQueue(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 110L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 120L, IsRead = false });
+
+            tab.AddSubmit();
+
+            Assert.Equal(3, tab.AllCount);
+            Assert.Equal(3, tab.UnreadCount);
+
+            tab.EnqueueRemovePost(100L, setIsDeleted: false);
+
+            // この時点では削除は行われない
+            Assert.Equal(3, tab.AllCount);
+            Assert.Equal(3, tab.UnreadCount);
+
+            var removedIds = tab.RemoveSubmit();
+
+            Assert.Equal(2, tab.AllCount);
+            Assert.Equal(2, tab.UnreadCount);
+            Assert.Equal(new[] { 110L, 120L }, tab.StatusIds);
+            Assert.Equal(new[] { 100L }, removedIds.AsEnumerable());
+        }
+
+        [Fact]
+        public void EnqueueRemovePost_SetIsDeletedTest()
+        {
+            var tab = new PublicSearchTabModel("search")
+            {
+                UnreadManage = true,
+            };
+
+            var post = new PostClass { StatusId = 100L, IsRead = false };
+            tab.AddPostQueue(post);
+            tab.AddSubmit();
+
+            Assert.Equal(1, tab.AllCount);
+            Assert.Equal(1, tab.UnreadCount);
+
+            tab.EnqueueRemovePost(100L, setIsDeleted: true);
+
+            // この時点ではタブからの削除は行われないが、PostClass.IsDeleted は true にセットされる
+            Assert.Equal(1, tab.AllCount);
+            Assert.Equal(1, tab.UnreadCount);
+            Assert.True(post.IsDeleted);
+
+            var removedIds = tab.RemoveSubmit();
+
+            Assert.Equal(0, tab.AllCount);
+            Assert.Equal(0, tab.UnreadCount);
+            Assert.Equal(new[] { 100L }, removedIds.AsEnumerable());
+        }
+
+        [Fact]
+        public void EnqueueRemovePost_UnknownIdTest()
+        {
+            var tab = new PublicSearchTabModel("search")
+            {
+                UnreadManage = true,
+            };
+
+            tab.AddPostQueue(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddSubmit();
+
+            Assert.Equal(1, tab.AllCount);
+            Assert.Equal(1, tab.UnreadCount);
+
+            // StatusId = 999L は存在しない
+            tab.EnqueueRemovePost(999L, setIsDeleted: false);
+
+            Assert.Equal(1, tab.AllCount);
+            Assert.Equal(1, tab.UnreadCount);
+
+            var removedIds = tab.RemoveSubmit();
+
+            Assert.Equal(1, tab.AllCount);
+            Assert.Equal(1, tab.UnreadCount);
+            Assert.Empty(removedIds);
+        }
+
         [Fact]
         public void NextUnreadId_Test()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
             // 未読なし
             Assert.Equal(-1L, tab.NextUnreadId);
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -51,7 +138,7 @@ namespace OpenTween
 
             Assert.Equal(100L, tab.NextUnreadId);
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 50L,
                 IsRead = true, // 既読
@@ -64,12 +151,12 @@ namespace OpenTween
         [Fact]
         public void NextUnreadId_DisabledTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             // 未読表示無効
             tab.UnreadManage = false;
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -82,7 +169,7 @@ namespace OpenTween
         [Fact]
         public void NextUnreadId_SortByIdAscTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
@@ -90,9 +177,9 @@ namespace OpenTween
             tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
 
             // 画面には上から 100 → 200 → 300 の順に並ぶ
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 300L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 200L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 300L, IsRead = false });
             tab.AddSubmit();
 
             // 昇順/降順に関わらず、ID の小さい順に未読の ID を返す
@@ -102,7 +189,7 @@ namespace OpenTween
         [Fact]
         public void NextUnreadId_SortByIdDescTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
@@ -110,9 +197,9 @@ namespace OpenTween
             tab.SetSortMode(ComparerMode.Id, SortOrder.Descending);
 
             // 画面には上から 300 → 200 → 100 の順に並ぶ
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 300L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 200L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 300L, IsRead = false });
             tab.AddSubmit();
 
             // 昇順/降順に関わらず、ID の小さい順に未読の ID を返す
@@ -122,7 +209,7 @@ namespace OpenTween
         [Fact]
         public void NextUnreadId_SortByScreenNameAscTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
@@ -130,9 +217,9 @@ namespace OpenTween
             tab.SetSortMode(ComparerMode.Name, SortOrder.Ascending);
 
             // 画面には上から 200 → 100 → 300 の順に並ぶ
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, ScreenName = "bbb", IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, ScreenName = "aaa", IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 300L, ScreenName = "ccc", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 100L, ScreenName = "bbb", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 200L, ScreenName = "aaa", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 300L, ScreenName = "ccc", IsRead = false });
             tab.AddSubmit();
 
             // 昇順/降順に関わらず、ScreenName の辞書順で小さい順に未読の ID を返す
@@ -142,7 +229,7 @@ namespace OpenTween
         [Fact]
         public void NextUnreadId_SortByScreenNameDescTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
@@ -150,9 +237,9 @@ namespace OpenTween
             tab.SetSortMode(ComparerMode.Name, SortOrder.Descending);
 
             // 画面には上から 300 → 100 → 200 の順に並ぶ
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, ScreenName = "bbb", IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, ScreenName = "aaa", IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 300L, ScreenName = "ccc", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 100L, ScreenName = "bbb", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 200L, ScreenName = "aaa", IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 300L, ScreenName = "ccc", IsRead = false });
             tab.AddSubmit();
 
             // 昇順/降順に関わらず、ScreenName の辞書順で小さい順に未読の ID を返す
@@ -162,14 +249,14 @@ namespace OpenTween
         [Fact]
         public void UnreadCount_Test()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
             // 未読なし
             Assert.Equal(0, tab.UnreadCount);
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -178,7 +265,7 @@ namespace OpenTween
 
             Assert.Equal(1, tab.UnreadCount);
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 50L,
                 IsRead = true, // 既読
@@ -191,12 +278,12 @@ namespace OpenTween
         [Fact]
         public void UnreadCount_DisabledTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             // 未読表示無効
             tab.UnreadManage = false;
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -209,7 +296,7 @@ namespace OpenTween
         [Fact]
         public void NextUnreadIndex_Test()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
             tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
 
             tab.UnreadManage = true;
@@ -217,17 +304,17 @@ namespace OpenTween
             // 未読なし
             Assert.Equal(-1, tab.NextUnreadIndex);
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 50L,
                 IsRead = true, // 既読
             });
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
             });
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 150L,
                 IsRead = false, // 未読
@@ -240,13 +327,13 @@ namespace OpenTween
         [Fact]
         public void NextUnreadIndex_DisabledTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
             tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
 
             // 未読表示無効
             tab.UnreadManage = false;
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -259,13 +346,13 @@ namespace OpenTween
         [Fact]
         public void GetUnreadIds_Test()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
             tab.UnreadManage = true;
 
             Assert.Empty(tab.GetUnreadIds());
 
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, IsRead = false });
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 200L, IsRead = true });
+            tab.AddPostQueue(new PostClass { StatusId = 100L, IsRead = false });
+            tab.AddPostQueue(new PostClass { StatusId = 200L, IsRead = true });
             tab.AddSubmit();
 
             Assert.Equal(new[] { 100L }, tab.GetUnreadIds());
@@ -278,11 +365,11 @@ namespace OpenTween
         [Fact]
         public void SetReadState_MarkAsReadTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = false, // 未読
@@ -299,11 +386,11 @@ namespace OpenTween
         [Fact]
         public void SetReadState_MarkAsUnreadTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.UserTimeline };
+            var tab = new PublicSearchTabModel("search");
 
             tab.UnreadManage = true;
 
-            tab.AddPostToInnerStorage(new PostClass
+            tab.AddPostQueue(new PostClass
             {
                 StatusId = 100L,
                 IsRead = true, // 既読
@@ -320,7 +407,7 @@ namespace OpenTween
         [Fact]
         public void FilterArraySetter_Test()
         {
-            var tab = new TabClass();
+            var tab = new FilterTabModel("MyTab");
 
             var filter = new PostFilterRule();
             tab.FilterArray = new[] { filter };
@@ -332,7 +419,7 @@ namespace OpenTween
         [Fact]
         public void AddFilter_Test()
         {
-            var tab = new TabClass();
+            var tab = new FilterTabModel("MyTab");
 
             var filter = new PostFilterRule();
             tab.AddFilter(filter);
@@ -344,7 +431,7 @@ namespace OpenTween
         [Fact]
         public void RemoveFilter_Test()
         {
-            var tab = new TabClass();
+            var tab = new FilterTabModel("MyTab");
 
             var filter = new PostFilterRule();
             tab.FilterArray = new[] { filter };
@@ -359,7 +446,7 @@ namespace OpenTween
         [Fact]
         public void OnFilterModified_Test()
         {
-            var tab = new TabClass();
+            var tab = new FilterTabModel("MyTab");
 
             var filter = new PostFilterRule();
             tab.FilterArray = new[] { filter };
@@ -374,7 +461,7 @@ namespace OpenTween
         [Fact]
         public void OnFilterModified_DetachedTest()
         {
-            var tab = new TabClass();
+            var tab = new FilterTabModel("MyTab");
 
             var filter = new PostFilterRule();
             tab.FilterArray = new[] { filter };
@@ -391,13 +478,13 @@ namespace OpenTween
         [Fact]
         public void SearchPostsAll_Test()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.PublicSearch };
+            var tab = new PublicSearchTabModel("search");
 
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
+            tab.AddPostQueue(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
+            tab.AddPostQueue(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
+            tab.AddPostQueue(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
+            tab.AddPostQueue(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
+            tab.AddPostQueue(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
 
             tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
             tab.AddSubmit();
@@ -414,13 +501,13 @@ namespace OpenTween
         [Fact]
         public void SearchPostsAll_ReverseOrderTest()
         {
-            var tab = new TabClass { TabType = MyCommon.TabUsageType.PublicSearch };
+            var tab = new PublicSearchTabModel("search");
 
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
-            tab.AddPostToInnerStorage(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
+            tab.AddPostQueue(new PostClass { StatusId = 100L, TextFromApi = "abcd", ScreenName = "", Nickname = "" }); // 0
+            tab.AddPostQueue(new PostClass { StatusId = 110L, TextFromApi = "efgh", ScreenName = "", Nickname = "" }); // 1
+            tab.AddPostQueue(new PostClass { StatusId = 120L, TextFromApi = "ijkl", ScreenName = "", Nickname = "" }); // 2
+            tab.AddPostQueue(new PostClass { StatusId = 130L, TextFromApi = "abc", ScreenName = "", Nickname = "" });  // 3
+            tab.AddPostQueue(new PostClass { StatusId = 140L, TextFromApi = "def", ScreenName = "", Nickname = "" });  // 4
 
             tab.SetSortMode(ComparerMode.Id, SortOrder.Ascending);
             tab.AddSubmit();

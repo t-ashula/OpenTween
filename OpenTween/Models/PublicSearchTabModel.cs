@@ -4,6 +4,7 @@
 //           (c) 2008-2011 takeshik (@takeshik) <http://www.takeshik.org/>
 //           (c) 2010-2011 anis774 (@anis774) <http://d.hatena.ne.jp/anis774/>
 //           (c) 2010-2011 fantasticswallow (@f_swallow) <http://twitter.com/f_swallow>
+//           (c) 2011      Egtra (@egtra) <http://dev.activebasic.com/egtra/>
 //           (c) 2012      kim_upsilon (@kim_upsilon) <https://upsilo.net/~upsilon/>
 // All rights reserved.
 //
@@ -28,38 +29,40 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Text.RegularExpressions;
-using OpenTween.Models;
 
-namespace OpenTween.Thumbnail.Services
+namespace OpenTween.Models
 {
-    class Youtube : IThumbnailService
+    public class PublicSearchTabModel : InternalStorageTabModel
     {
-        public static readonly Regex UrlPatternRegex =
-            new Regex(@"^https?://(?:((?:www|m)\.youtube\.com)|(youtu\.be))/(watch\?v=)?(?<videoid>([\w\-]+))");
+        public override MyCommon.TabUsageType TabType
+            => MyCommon.TabUsageType.PublicSearch;
 
-        public override Task<ThumbnailInfo> GetThumbnailInfoAsync(string url, PostClass post, CancellationToken token)
+        public string SearchWords
         {
-            return Task.Run(() =>
+            get { return this._searchWords; }
+            set
             {
-                var match = Youtube.UrlPatternRegex.Match(url);
-                if (!match.Success)
-                    return null;
+                this._searchWords = value;
+                this.ResetFetchIds();
+            }
+        }
 
-                var videoId = match.Groups["videoid"].Value;
-                var imgUrl = "http://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
+        public string SearchLang
+        {
+            get { return this._searchLang; }
+            set
+            {
+                this._searchLang = value;
+                this.ResetFetchIds();
+            }
+        }
 
-                return new ThumbnailInfo
-                {
-                    MediaPageUrl = url,
-                    ThumbnailImageUrl = imgUrl,
-                    TooltipText = null,
-                    IsPlayable = true,
-                };
-            }, token);
+        private string _searchWords = "";
+        private string _searchLang = "";
+
+        public PublicSearchTabModel(string tabName) : base(tabName)
+        {
         }
     }
 }

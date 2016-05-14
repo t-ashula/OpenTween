@@ -23,37 +23,25 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-using OpenTween.Models;
 
-namespace OpenTween.Thumbnail.Services
+namespace OpenTween.Models
 {
-    class PbsTwimgCom : SimpleThumbnailService
+    public class MuteTabModel : FilterTabModel
     {
-        public static readonly string UrlPattern = @"^(https?://pbs\.twimg\.com/[^:]+)(?:\:.+)?$";
+        public override MyCommon.TabUsageType TabType
+            => MyCommon.TabUsageType.Mute;
 
-        public PbsTwimgCom()
-            : base(UrlPattern, "${1}", "${1}:orig")
+        public MuteTabModel() : this(MyCommon.DEFAULTTAB.MUTE)
         {
         }
 
-        public override async Task<ThumbnailInfo> GetThumbnailInfoAsync(string url, PostClass post, CancellationToken token)
+        public MuteTabModel(string tabName) : base(tabName)
         {
-            var thumb = await base.GetThumbnailInfoAsync(url, post, token)
-                .ConfigureAwait(false);
+        }
 
-            if (thumb == null)
-                return null;
-
-            var media = post.Media.FirstOrDefault(x => x.Url == url);
-            if (media != null)
-            {
-                thumb.TooltipText = media.AltText;
-            }
-
-            return thumb;
+        public override void AddPostQueue(PostClass post)
+        {
         }
     }
 }
