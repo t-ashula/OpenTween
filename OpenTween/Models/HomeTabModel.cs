@@ -26,9 +26,11 @@
 // Boston, MA 02110-1301, USA.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenTween.Models
@@ -38,12 +40,76 @@ namespace OpenTween.Models
         public override MyCommon.TabUsageType TabType
             => MyCommon.TabUsageType.Home;
 
+        public int TweetsPerHour => this.tweetsPerHour;
+
+        // 流速計測用
+        private int tweetsPerHour = 0;
+        private ConcurrentDictionary<DateTime, int> tweetsTimestamps = new ConcurrentDictionary<DateTime, int>();
+
         public HomeTabModel() : this(MyCommon.DEFAULTTAB.RECENT)
         {
         }
 
         public HomeTabModel(string tabName) : base(tabName)
         {
+        }
+
+        public override void AddPostQueue(PostClass post)
+        {
+            base.AddPostQueue(post);
+            this.UpdateTimelineSpeed(post.CreatedAt);
+        }
+
+        public override async Task RefreshAsync(Twitter tw, bool backward, bool startup, IProgress<string> progress)
+        {
+            bool read;
+            if (!SettingCommon.Instance.UnreadManage)
+                read = true;
+            else
+                read = startup && SettingCommon.Instance.Read;
+
+            progress.Report(string.Format(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText5, backward ? -1 : 1));
+
+            await tw.GetHomeTimelineApi(read, this, backward, startup)
+                .ConfigureAwait(false);
+
+            // 新着時未読クリア
+            if (SettingCommon.Instance.ReadOldPosts)
+                TabInformations.GetInstance().SetReadHomeTab();
+
+            TabInformations.GetInstance().DistributePosts();
+
+            progress.Report(Properties.Resources.GetTimelineWorker_RunWorkerCompletedText1);
+        }
+
+        /// <summary>
+        /// タイムラインに追加された発言件数を反映し、タイムラインの流速を更新します
+        /// </summary>
+        private void UpdateTimelineSpeed(DateTime postCreatedAt)
+        {
+            var now = DateTime.Now;
+
+            // 1 時間以上前の時刻は追加しない
+            var oneHour = TimeSpan.FromHours(1);
+            if (now - postCreatedAt > oneHour)
+                return;
+
+            this.tweetsTimestamps.AddOrUpdate(postCreatedAt, 1, (k, v) => v + 1);
+
+            var removeKeys = new List<DateTime>();
+            var tweetsInWindow = 0;
+            foreach (var pair in this.tweetsTimestamps)
+            {
+                if (now - pair.Key > oneHour)
+                    removeKeys.Add(pair.Key);
+                else
+                    tweetsInWindow += pair.Value;
+            }
+            Interlocked.Exchange(ref this.tweetsPerHour, tweetsInWindow);
+
+            int _;
+            foreach (var key in removeKeys)
+                this.tweetsTimestamps.TryRemove(key, out _);
         }
     }
 }

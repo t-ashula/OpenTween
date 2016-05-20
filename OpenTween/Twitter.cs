@@ -162,8 +162,6 @@ namespace OpenTween
         private List<string> _hashList = new List<string>();
 
         //max_idで古い発言を取得するために保持（lists分は個別タブで管理）
-        private long minHomeTimeline = long.MaxValue;
-        private long minMentions = long.MaxValue;
         private long minDirectmessage = long.MaxValue;
         private long minDirectmessageSent = long.MaxValue;
 
@@ -546,109 +544,6 @@ namespace OpenTween
 
         public bool RestrictFavCheck { get; set; }
 
-#region "バージョンアップ"
-        public void GetTweenBinary(string strVer)
-        {
-            try
-            {
-                //本体
-                if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/Tween" + strVer + ".gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                    Path.Combine(MyCommon.settingPath, "TweenNew.exe")))
-                {
-                    throw new WebApiException("Err:Download failed");
-                }
-                //英語リソース
-                if (!Directory.Exists(Path.Combine(MyCommon.settingPath, "en")))
-                {
-                    Directory.CreateDirectory(Path.Combine(MyCommon.settingPath, "en"));
-                }
-                if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/TweenResEn" + strVer + ".gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                    Path.Combine(Path.Combine(MyCommon.settingPath, "en"), "Tween.resourcesNew.dll")))
-                {
-                    throw new WebApiException("Err:Download failed");
-                }
-                //その他言語圏のリソース。取得失敗しても継続
-                //UIの言語圏のリソース
-                var curCul = "";
-                if (!Thread.CurrentThread.CurrentUICulture.IsNeutralCulture)
-                {
-                    var idx = Thread.CurrentThread.CurrentUICulture.Name.LastIndexOf('-');
-                    if (idx > -1)
-                    {
-                        curCul = Thread.CurrentThread.CurrentUICulture.Name.Substring(0, idx);
-                    }
-                    else
-                    {
-                        curCul = Thread.CurrentThread.CurrentUICulture.Name;
-                    }
-                }
-                else
-                {
-                    curCul = Thread.CurrentThread.CurrentUICulture.Name;
-                }
-                if (!string.IsNullOrEmpty(curCul) && curCul != "en" && curCul != "ja")
-                {
-                    if (!Directory.Exists(Path.Combine(MyCommon.settingPath, curCul)))
-                    {
-                        Directory.CreateDirectory(Path.Combine(MyCommon.settingPath, curCul));
-                    }
-                    if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/TweenRes" + curCul + strVer + ".gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                        Path.Combine(Path.Combine(MyCommon.settingPath, curCul), "Tween.resourcesNew.dll")))
-                    {
-                        //return "Err:Download failed";
-                    }
-                }
-                //スレッドの言語圏のリソース
-                string curCul2;
-                if (!Thread.CurrentThread.CurrentCulture.IsNeutralCulture)
-                {
-                    var idx = Thread.CurrentThread.CurrentCulture.Name.LastIndexOf('-');
-                    if (idx > -1)
-                    {
-                        curCul2 = Thread.CurrentThread.CurrentCulture.Name.Substring(0, idx);
-                    }
-                    else
-                    {
-                        curCul2 = Thread.CurrentThread.CurrentCulture.Name;
-                    }
-                }
-                else
-                {
-                    curCul2 = Thread.CurrentThread.CurrentCulture.Name;
-                }
-                if (!string.IsNullOrEmpty(curCul2) && curCul2 != "en" && curCul2 != curCul)
-                {
-                    if (!Directory.Exists(Path.Combine(MyCommon.settingPath, curCul2)))
-                    {
-                        Directory.CreateDirectory(Path.Combine(MyCommon.settingPath, curCul2));
-                    }
-                    if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/TweenRes" + curCul2 + strVer + ".gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                    Path.Combine(Path.Combine(MyCommon.settingPath, curCul2), "Tween.resourcesNew.dll")))
-                    {
-                        //return "Err:Download failed";
-                    }
-                }
-
-                //アップデータ
-                if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/TweenUp3.gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                    Path.Combine(MyCommon.settingPath, "TweenUp3.exe")))
-                {
-                    throw new WebApiException("Err:Download failed");
-                }
-                //シリアライザDLL
-                if (!(new HttpVarious()).GetDataToFile("http://tween.sourceforge.jp/TweenDll" + strVer + ".gz?" + DateTime.Now.ToString("yyMMddHHmmss") + Environment.TickCount.ToString(),
-                                                    Path.Combine(MyCommon.settingPath, "TweenNew.XmlSerializers.dll")))
-                {
-                    throw new WebApiException("Err:Download failed");
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new WebApiException("Err:Download failed", ex);
-            }
-        }
-#endregion
-
         public bool ReadOwnPost
         {
             get
@@ -778,49 +673,50 @@ namespace OpenTween
             return Math.Min(count, GetMaxApiResultCount(type));
         }
 
-        public async Task GetTimelineApi(bool read, MyCommon.WORKERTYPE gType, bool more, bool startup)
+        public async Task GetHomeTimelineApi(bool read, HomeTabModel tab, bool more, bool startup)
         {
             this.CheckAccountState();
 
-            var count = GetApiResultCount(gType, more, startup);
+            var count = GetApiResultCount(MyCommon.WORKERTYPE.Timeline, more, startup);
 
             TwitterStatus[] statuses;
-            if (gType == MyCommon.WORKERTYPE.Timeline)
+            if (more)
             {
-                if (more)
-                {
-                    statuses = await this.Api.StatusesHomeTimeline(count, maxId: this.minHomeTimeline)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    statuses = await this.Api.StatusesHomeTimeline(count)
-                        .ConfigureAwait(false);
-                }
+                statuses = await this.Api.StatusesHomeTimeline(count, maxId: tab.OldestId)
+                    .ConfigureAwait(false);
             }
             else
             {
-                if (more)
-                {
-                    statuses = await this.Api.StatusesMentionsTimeline(count, maxId: this.minMentions)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    statuses = await this.Api.StatusesMentionsTimeline(count)
-                        .ConfigureAwait(false);
-                }
+                statuses = await this.Api.StatusesHomeTimeline(count)
+                    .ConfigureAwait(false);
             }
 
-            var minimumId = CreatePostsFromJson(statuses, gType, null, read);
-
+            var minimumId = this.CreatePostsFromJson(statuses, MyCommon.WORKERTYPE.Timeline, tab, read);
             if (minimumId != null)
+                tab.OldestId = minimumId.Value;
+        }
+
+        public async Task GetMentionsTimelineApi(bool read, MentionsTabModel tab, bool more, bool startup)
+        {
+            this.CheckAccountState();
+
+            var count = GetApiResultCount(MyCommon.WORKERTYPE.Reply, more, startup);
+
+            TwitterStatus[] statuses;
+            if (more)
             {
-                if (gType == MyCommon.WORKERTYPE.Timeline)
-                    this.minHomeTimeline = minimumId.Value;
-                else
-                    this.minMentions = minimumId.Value;
+                statuses = await this.Api.StatusesMentionsTimeline(count, maxId: tab.OldestId)
+                    .ConfigureAwait(false);
             }
+            else
+            {
+                statuses = await this.Api.StatusesMentionsTimeline(count)
+                    .ConfigureAwait(false);
+            }
+
+            var minimumId = this.CreatePostsFromJson(statuses, MyCommon.WORKERTYPE.Reply, tab, read);
+            if (minimumId != null)
+                tab.OldestId = minimumId.Value;
         }
 
         public async Task GetUserTimelineApi(bool read, string userName, UserTimelineTabModel tab, bool more)

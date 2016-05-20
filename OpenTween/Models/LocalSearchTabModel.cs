@@ -32,8 +32,13 @@ namespace OpenTween.Models
         public override MyCommon.TabUsageType TabType
             => MyCommon.TabUsageType.SearchResults;
 
+        public override bool IsPermanentTabType => false;
+
         public LocalSearchTabModel(string tabName) : base(tabName)
         {
         }
+
+        public override Task RefreshAsync(Twitter tw, bool backward, bool startup, IProgress<string> progress)
+            => Task.FromResult(0); // 何もしない
     }
 }
