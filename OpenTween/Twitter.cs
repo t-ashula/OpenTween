@@ -165,6 +165,8 @@ namespace OpenTween
         private long minDirectmessage = long.MaxValue;
         private long minDirectmessageSent = long.MaxValue;
 
+        private long previousStatusId = -1L;
+
         //private FavoriteQueue favQueue;
 
         //private List<PostClass> _deletemessages = new List<PostClass>();
@@ -272,131 +274,6 @@ namespace OpenTween
             return orgData;
         }
 
-        private string GetPlainText(string orgData)
-        {
-            return WebUtility.HtmlDecode(Regex.Replace(orgData, "(?<tagStart><a [^>]+>)(?<text>[^<]+)(?<tagEnd></a>)", "${text}"));
-        }
-
-        // htmlの簡易サニタイズ(詳細表示に不要なタグの除去)
-
-        private string SanitizeHtml(string orgdata)
-        {
-            var retdata = orgdata;
-
-            retdata = Regex.Replace(retdata, "<(script|object|applet|image|frameset|fieldset|legend|style).*" +
-                "</(script|object|applet|image|frameset|fieldset|legend|style)>", "", RegexOptions.IgnoreCase);
-
-            retdata = Regex.Replace(retdata, "<(frame|link|iframe|img)>", "", RegexOptions.IgnoreCase);
-
-            return retdata;
-        }
-
-        private string AdjustHtml(string orgData)
-        {
-            var retStr = orgData;
-            //var m = Regex.Match(retStr, "<a [^>]+>[#|＃](?<1>[a-zA-Z0-9_]+)</a>");
-            //while (m.Success)
-            //{
-            //    lock (LockObj)
-            //    {
-            //        _hashList.Add("#" + m.Groups(1).Value);
-            //    }
-            //    m = m.NextMatch;
-            //}
-            retStr = Regex.Replace(retStr, "<a [^>]*href=\"/", "<a href=\"https://twitter.com/");
-            retStr = retStr.Replace("<a href=", "<a target=\"_self\" href=");
-            retStr = Regex.Replace(retStr, @"(\r\n?|\n)", "<br>"); // CRLF, CR, LF は全て <br> に置換する
-
-            //半角スペースを置換(Thanks @anis774)
-            var ret = false;
-            do
-            {
-                ret = EscapeSpace(ref retStr);
-            } while (!ret);
-
-            return SanitizeHtml(retStr);
-        }
-
-        private bool EscapeSpace(ref string html)
-        {
-            //半角スペースを置換(Thanks @anis774)
-            var isTag = false;
-            for (int i = 0; i < html.Length; i++)
-            {
-                if (html[i] == '<')
-                {
-                    isTag = true;
-                }
-                if (html[i] == '>')
-                {
-                    isTag = false;
-                }
-
-                if ((!isTag) && (html[i] == ' '))
-                {
-                    html = html.Remove(i, 1);
-                    html = html.Insert(i, "&nbsp;");
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private struct PostInfo
-        {
-            public string CreatedAt;
-            public string Id;
-            public string Text;
-            public string UserId;
-            public PostInfo(string Created, string IdStr, string txt, string uid)
-            {
-                CreatedAt = Created;
-                Id = IdStr;
-                Text = txt;
-                UserId = uid;
-            }
-            public bool Equals(PostInfo dst)
-            {
-                if (this.CreatedAt == dst.CreatedAt && this.Id == dst.Id && this.Text == dst.Text && this.UserId == dst.UserId)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-
-        static private PostInfo _prev = new PostInfo("", "", "", "");
-        private bool IsPostRestricted(TwitterStatus status)
-        {
-            var _current = new PostInfo("", "", "", "");
-
-            _current.CreatedAt = status.CreatedAt;
-            _current.Id = status.IdStr;
-            if (status.Text == null)
-            {
-                _current.Text = "";
-            }
-            else
-            {
-                _current.Text = status.Text;
-            }
-            _current.UserId = status.User.IdStr;
-
-            if (_current.Equals(_prev))
-            {
-                return true;
-            }
-            _prev.CreatedAt = _current.CreatedAt;
-            _prev.Id = _current.Id;
-            _prev.Text = _current.Text;
-            _prev.UserId = _current.UserId;
-
-            return false;
-        }
-
         public async Task PostStatus(string postStr, long? reply_to, IReadOnlyList<long> mediaIds = null)
         {
             this.CheckAccountState();
@@ -417,34 +294,10 @@ namespace OpenTween
 
             this.UpdateUserStats(status.User);
 
-            if (IsPostRestricted(status))
-            {
+            if (status.Id == this.previousStatusId)
                 throw new WebApiException("OK:Delaying?");
-            }
-        }
 
-        public async Task PostStatusWithMultipleMedia(string postStr, long? reply_to, IMediaItem[] mediaItems)
-        {
-            this.CheckAccountState();
-
-            if (Twitter.DMSendTextRegex.IsMatch(postStr))
-            {
-                await this.SendDirectMessage(postStr)
-                    .ConfigureAwait(false);
-                return;
-            }
-
-            if (mediaItems.Length == 0)
-                throw new WebApiException("Err:Invalid Files!");
-
-            var uploadTasks = from m in mediaItems
-                              select this.UploadMedia(m);
-
-            var mediaIds = await Task.WhenAll(uploadTasks)
-                .ConfigureAwait(false);
-
-            await this.PostStatus(postStr, reply_to, mediaIds)
-                .ConfigureAwait(false);
+            this.previousStatusId = status.Id;
         }
 
         public async Task<long> UploadMedia(IMediaItem item)
@@ -828,19 +681,33 @@ namespace OpenTween
 
                 //以下、ユーザー情報
                 var user = retweeted.User;
-
-                if (user == null || user.ScreenName == null || status.User.ScreenName == null) return null;
-
-                post.UserId = user.Id;
-                post.ScreenName = user.ScreenName;
-                post.Nickname = user.Name.Trim();
-                post.ImageUrl = user.ProfileImageUrlHttps;
-                post.IsProtect = user.Protected;
+                if (user != null)
+                {
+                    post.UserId = user.Id;
+                    post.ScreenName = user.ScreenName;
+                    post.Nickname = user.Name.Trim();
+                    post.ImageUrl = user.ProfileImageUrlHttps;
+                    post.IsProtect = user.Protected;
+                }
+                else
+                {
+                    post.UserId = 0L;
+                    post.ScreenName = "?????";
+                    post.Nickname = "Unknown User";
+                }
 
                 //Retweetした人
-                post.RetweetedBy = status.User.ScreenName;
-                post.RetweetedByUserId = status.User.Id;
-                post.IsMe = post.RetweetedBy.ToLowerInvariant().Equals(_uname);
+                if (status.User != null)
+                {
+                    post.RetweetedBy = status.User.ScreenName;
+                    post.RetweetedByUserId = status.User.Id;
+                    post.IsMe = post.RetweetedBy.ToLowerInvariant().Equals(_uname);
+                }
+                else
+                {
+                    post.RetweetedBy = "?????";
+                    post.RetweetedByUserId = 0L;
+                }
             }
             else
             {
@@ -869,15 +736,21 @@ namespace OpenTween
 
                 //以下、ユーザー情報
                 var user = status.User;
-
-                if (user == null || user.ScreenName == null) return null;
-
-                post.UserId = user.Id;
-                post.ScreenName = user.ScreenName;
-                post.Nickname = user.Name.Trim();
-                post.ImageUrl = user.ProfileImageUrlHttps;
-                post.IsProtect = user.Protected;
-                post.IsMe = post.ScreenName.ToLowerInvariant().Equals(_uname);
+                if (user != null)
+                {
+                    post.UserId = user.Id;
+                    post.ScreenName = user.ScreenName;
+                    post.Nickname = user.Name.Trim();
+                    post.ImageUrl = user.ProfileImageUrlHttps;
+                    post.IsProtect = user.Protected;
+                    post.IsMe = post.ScreenName.ToLowerInvariant().Equals(_uname);
+                }
+                else
+                {
+                    post.UserId = 0L;
+                    post.ScreenName = "?????";
+                    post.Nickname = "Unknown User";
+                }
             }
             //HTMLに整形
             string textFromApi = post.TextFromApi;
@@ -1709,47 +1582,6 @@ namespace OpenTween
         {
             if (!this.AccessLevel.HasFlag(accessLevelFlags))
                 throw new WebApiException("Auth Err:try to re-authorization.");
-        }
-
-        private void CheckStatusCode(HttpStatusCode httpStatus, string responseText,
-            [CallerMemberName] string callerMethodName = "")
-        {
-            if (httpStatus == HttpStatusCode.OK)
-            {
-                Twitter.AccountState = MyCommon.ACCOUNT_STATE.Valid;
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(responseText))
-            {
-                if (httpStatus == HttpStatusCode.Unauthorized)
-                    Twitter.AccountState = MyCommon.ACCOUNT_STATE.Invalid;
-
-                throw new WebApiException("Err:" + httpStatus + "(" + callerMethodName + ")");
-            }
-
-            try
-            {
-                var errors = TwitterError.ParseJson(responseText).Errors;
-                if (errors == null || !errors.Any())
-                {
-                    throw new WebApiException("Err:" + httpStatus + "(" + callerMethodName + ")", responseText);
-                }
-
-                foreach (var error in errors)
-                {
-                    if (error.Code == TwitterErrorCode.InvalidToken ||
-                        error.Code == TwitterErrorCode.SuspendedAccount)
-                    {
-                        Twitter.AccountState = MyCommon.ACCOUNT_STATE.Invalid;
-                    }
-                }
-
-                throw new WebApiException("Err:" + string.Join(",", errors.Select(x => x.ToString())) + "(" + callerMethodName + ")", responseText);
-            }
-            catch (SerializationException) { }
-
-            throw new WebApiException("Err:" + httpStatus + "(" + callerMethodName + ")", responseText);
         }
 
         public int GetTextLengthRemain(string postText)

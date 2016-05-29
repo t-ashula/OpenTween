@@ -39,6 +39,13 @@ namespace OpenTween.Connection
     {
         public static Uri RestApiBase { get; set; } = new Uri("https://api.twitter.com/1.1/");
 
+        // SettingCommon.xml の TwitterUrl との互換性のために用意
+        public static string RestApiHost
+        {
+            get { return RestApiBase.Host; }
+            set { RestApiBase = new Uri($"https://{value}/1.1/"); }
+        }
+
         public bool IsDisposed { get; private set; } = false;
 
         public string AccessToken { get; }
@@ -168,11 +175,16 @@ namespace OpenTween.Connection
 
             using (var postContent = new MultipartFormDataContent())
             {
-                foreach (var kv in param)
-                    postContent.Add(new StringContent(kv.Value), kv.Key);
-
-                foreach (var kv in media)
-                    postContent.Add(new StreamContent(kv.Value.OpenRead()), kv.Key, kv.Value.Name);
+                if (param != null)
+                {
+                    foreach (var kv in param)
+                        postContent.Add(new StringContent(kv.Value), kv.Key);
+                }
+                if (media != null)
+                {
+                    foreach (var kv in media)
+                        postContent.Add(new StreamContent(kv.Value.OpenRead()), kv.Key, kv.Value.Name);
+                }
 
                 request.Content = postContent;
 
@@ -201,6 +213,35 @@ namespace OpenTween.Connection
                 finally
                 {
                     response?.Dispose();
+                }
+            }
+        }
+
+        public async Task PostJsonAsync(Uri uri, string json)
+        {
+            var requestUri = new Uri(RestApiBase, uri);
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
+
+            using (var postContent = new StringContent(json, Encoding.UTF8, "application/json"))
+            {
+                request.Content = postContent;
+
+                try
+                {
+                    using (var response = await this.http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                        .ConfigureAwait(false))
+                    {
+                        await this.CheckStatusCode(response)
+                            .ConfigureAwait(false);
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    throw TwitterApiException.CreateFromException(ex);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    throw TwitterApiException.CreateFromException(ex);
                 }
             }
         }

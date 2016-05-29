@@ -117,10 +117,95 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Label2.Text" xml:space="preserve">
-    <value>Service</value>
+  <data name="UserPicture.AccessibleName" xml:space="preserve">
+    <value>ProfileImage</value>
   </data>
-  <data name="AlternativeTextLabel.Text" xml:space="preserve">
-    <value>&amp;Alternative text:</value>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="PostBrowser.AccessibleName" xml:space="preserve">
+    <value>PostBody</value>
+  </data>
+  <data name="SelectionSearchContextMenuItem.Text" xml:space="preserve">
+    <value>&amp;Search selecting words</value>
+  </data>
+  <data name="SelectionCopyContextMenuItem.Text" xml:space="preserve">
+    <value>&amp;Copy</value>
+  </data>
+  <data name="UrlCopyContextMenuItem.Text" xml:space="preserve">
+    <value>Copy &amp;URL</value>
+  </data>
+  <data name="SelectionAllContextMenuItem.Text" xml:space="preserve">
+    <value>Select &amp;All</value>
+  </data>
+  <data name="FollowContextMenuItem.Text" xml:space="preserve">
+    <value>&amp;Follow</value>
+  </data>
+  <data name="RemoveContextMenuItem.Text" xml:space="preserve">
+    <value>&amp;Unfollow</value>
+  </data>
+  <data name="FriendshipContextMenuItem.Text" xml:space="preserve">
+    <value>Friendship &amp;Relation</value>
+  </data>
+  <data name="FriendshipAllMenuItem.Text" xml:space="preserve">
+    <value>&amp;All User Friendship in this Tweet</value>
+  </data>
+  <data name="ShowUserStatusContextMenuItem.Text" xml:space="preserve">
+    <value>User &amp;Profile</value>
+  </data>
+  <data name="SearchPostsDetailToolStripMenuItem.Text" xml:space="preserve">
+    <value>User Timeline(&amp;F)</value>
+  </data>
+  <data name="SearchAtPostsDetailToolStripMenuItem.Text" xml:space="preserve">
+    <value>Search &amp;Mentions to this user</value>
+  </data>
+  <data name="IdFilterAddMenuItem.Text" xml:space="preserve">
+    <value>Filter by &amp;Id ...</value>
+  </data>
+  <data name="ListManageUserContextToolStripMenuItem.Text" xml:space="preserve">
+    <value>Add to &amp;Lists</value>
+  </data>
+  <data name="UseHashtagMenuItem.Text" xml:space="preserve">
+    <value>Use this &amp;Hashtag</value>
+  </data>
+  <data name="SelectionTranslationToolStripMenuItem.Text" xml:space="preserve">
+    <value>&amp;Translate selecting words</value>
+  </data>
+  <data name="TranslationToolStripMenuItem.Text" xml:space="preserve">
+    <value>Translate</value>
+  </data>
+  <data name="FollowToolStripMenuItem.Text" xml:space="preserve">
+    <value>&amp;Follow</value>
+  </data>
+  <data name="UnFollowToolStripMenuItem.Text" xml:space="preserve">
+    <value>&amp;Unfollow</value>
+  </data>
+  <data name="ShowFriendShipToolStripMenuItem.Text" xml:space="preserve">
+    <value>Friendship &amp;Relation</value>
+  </data>
+  <data name="ListManageUserContextToolStripMenuItem3.Text" xml:space="preserve">
+    <value>Add to &amp;Lists</value>
+  </data>
+  <data name="ShowUserStatusToolStripMenuItem.Text" xml:space="preserve">
+    <value>User &amp;Profile</value>
+  </data>
+  <data name="SearchPostsDetailNameToolStripMenuItem.Text" xml:space="preserve">
+    <value>User &amp;Timeline</value>
+  </data>
+  <data name="SearchAtPostsDetailNameToolStripMenuItem.Text" xml:space="preserve">
+    <value>Search &amp;Mentions to this user</value>
+  </data>
+  <data name="ReloadIconToolStripMenuItem.Text" xml:space="preserve">
+    <value>&amp;Reload Icon</value>
+  </data>
+  <data name="SaveIconPictureToolStripMenuItem.Text" xml:space="preserve">
+    <value>Save &amp;Icon...</value>
+  </data>
+  <data name="CurrentTabToolStripMenuItem.Text" xml:space="preserve">
+    <value>Current Tab(&amp;Local)</value>
+  </data>
+  <data name="SourceCopyMenuItem.Text" xml:space="preserve">
+    <value>Copy &amp;Source</value>
+  </data>
+  <data name="SourceUrlCopyMenuItem.Text" xml:space="preserve">
+    <value>Copy Source &amp;URL</value>
   </data>
 </root>
