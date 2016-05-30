@@ -2053,7 +2053,7 @@ namespace OpenTween
         }
 
         public bool UserStreamActive
-            => this.userStream == null ? false : this.userStream.IsStreamActive;
+            => this.userStream != null && this.userStream.IsStreamActive;
 
         public void StartUserStream()
         {
@@ -2131,14 +2131,14 @@ namespace OpenTween
 
             private async Task UserStreamLoop(CancellationToken cancellationToken)
             {
-                TimeSpan? sleep = null;
+                TimeSpan sleep = TimeSpan.Zero;
                 for (;;)
                 {
-                    if (sleep != null)
+                    if (sleep != TimeSpan.Zero)
                     {
-                        await Task.Delay(sleep.Value, cancellationToken)
+                        await Task.Delay(sleep, cancellationToken)
                             .ConfigureAwait(false);
-                        sleep = null;
+                        sleep = TimeSpan.Zero;
                     }
 
                     if (!MyCommon.IsNetworkAvailable())

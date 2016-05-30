@@ -1155,9 +1155,9 @@ namespace OpenTween
             detailHtmlFormatHeader = detailHtmlFormatHeader
                     .Replace("%FONT_FAMILY%", _fntDetail.Name)
                     .Replace("%FONT_SIZE%", _fntDetail.Size.ToString())
-                    .Replace("%FONT_COLOR%", _clDetail.R.ToString() + "," + _clDetail.G.ToString() + "," + _clDetail.B.ToString())
-                    .Replace("%LINK_COLOR%", _clDetailLink.R.ToString() + "," + _clDetailLink.G.ToString() + "," + _clDetailLink.B.ToString())
-                    .Replace("%BG_COLOR%", _clDetailBackcolor.R.ToString() + "," + _clDetailBackcolor.G.ToString() + "," + _clDetailBackcolor.B.ToString())
+                    .Replace("%FONT_COLOR%", $"{_clDetail.R},{_clDetail.G},{_clDetail.B}")
+                    .Replace("%LINK_COLOR%", $"{_clDetailLink.R},{_clDetailLink.G},{_clDetailLink.B}")
+                    .Replace("%BG_COLOR%", $"{_clDetailBackcolor.R},{_clDetailBackcolor.G},{_clDetailBackcolor.B}")
                     .Replace("%BG_REPLY_COLOR%", $"{_clAtTo.R}, {_clAtTo.G}, {_clAtTo.B}");
         }
 
@@ -1647,7 +1647,7 @@ namespace OpenTween
         }
 
         /// <summary>
-        /// <see cref="SaveListViewStatus"/> によって保存された選択状態を復元します
+        /// <see cref="SaveListViewSelection"/> によって保存された選択状態を復元します
         /// </summary>
         private void RestoreListViewSelection(DetailsListView listView, TabModel tab, ListViewSelection listSelection)
         {
@@ -3226,8 +3226,7 @@ namespace OpenTween
         {
             // 表示上の列の位置から ColumnHeader を求める
             var col = this._curList.Columns.Cast<ColumnHeader>()
-                .Where(x => x.DisplayIndex == columnIndex)
-                .FirstOrDefault();
+                .FirstOrDefault(x => x.DisplayIndex == columnIndex);
 
             if (col == null)
                 return;
@@ -4309,7 +4308,7 @@ namespace OpenTween
                 this.ListTab.Controls.Add(_tabPage);
 
                 _tabPage.Location = new Point(4, 4);
-                _tabPage.Name = "CTab" + cnt.ToString();
+                _tabPage.Name = "CTab" + cnt;
                 _tabPage.Size = new Size(380, 260);
                 _tabPage.TabIndex = 2 + cnt;
                 _tabPage.Text = tab.TabName;
@@ -4326,7 +4325,7 @@ namespace OpenTween
                 _listCustom.HideSelection = false;
                 _listCustom.Location = new Point(0, 0);
                 _listCustom.Margin = new Padding(0);
-                _listCustom.Name = "CList" + Environment.TickCount.ToString();
+                _listCustom.Name = "CList" + Environment.TickCount;
                 _listCustom.ShowItemToolTips = true;
                 _listCustom.Size = new Size(380, 260);
                 _listCustom.UseCompatibleStateImageBehavior = false;
@@ -4482,10 +4481,7 @@ namespace OpenTween
             {
                 DetailsListView lst = (DetailsListView)tp.Tag;
                 var count = _statuses.Tabs[tp.Text].AllCount;
-                if (lst.VirtualListSize != count)
-                {
-                    lst.VirtualListSize = count;
-                }
+                lst.VirtualListSize = count;
             }
 
             return true;
@@ -4504,7 +4500,7 @@ namespace OpenTween
             if (!this._cfgCommon.TabMouseLock && e.Button == MouseButtons.Left && _tabDrag)
             {
                 string tn = "";
-                Rectangle dragEnableRectangle = new Rectangle((int)(_tabMouseDownPoint.X - (SystemInformation.DragSize.Width / 2)), (int)(_tabMouseDownPoint.Y - (SystemInformation.DragSize.Height / 2)), SystemInformation.DragSize.Width, SystemInformation.DragSize.Height);
+                Rectangle dragEnableRectangle = new Rectangle(_tabMouseDownPoint.X - (SystemInformation.DragSize.Width / 2), _tabMouseDownPoint.Y - (SystemInformation.DragSize.Height / 2), SystemInformation.DragSize.Width, SystemInformation.DragSize.Height);
                 if (!dragEnableRectangle.Contains(e.Location))
                 {
                     //タブが多段の場合にはMouseDownの前の段階で選択されたタブの段が変わっているので、このタイミングでカーソルの位置からタブを判定出来ない。
@@ -4678,7 +4674,7 @@ namespace OpenTween
                 if (e.KeyCode == Keys.Space || e.KeyCode == Keys.ProcessKey)
                 {
                     bool isSpace = false;
-                    foreach (char c in StatusText.Text.ToCharArray())
+                    foreach (char c in StatusText.Text)
                     {
                         if (c == ' ' || c == '　')
                         {
@@ -4909,7 +4905,7 @@ namespace OpenTween
             //if (Post.IsMark) mk.Append("♪");
             //if (Post.IsProtect) mk.Append("Ю");
             //if (Post.InReplyToStatusId != null) mk.Append("⇒");
-            if (Post.FavoritedCount > 0) mk.Append("+" + Post.FavoritedCount.ToString());
+            if (Post.FavoritedCount > 0) mk.Append("+" + Post.FavoritedCount);
             ImageListViewItem itm;
             if (Post.RetweetedId == null)
             {
@@ -5439,7 +5435,7 @@ namespace OpenTween
 
         /// <summary>発言検索に使用するメソッドを生成します</summary>
         /// <exception cref="ArgumentException">
-        /// <paramref name="useRegex"/> が true かつ、<paramref name="query"> が不正な正規表現な場合
+        /// <paramref name="useRegex"/> が true かつ、<paramref name="query"/> が不正な正規表現な場合
         /// </exception>
         private Func<string, bool> CreateSearchComparer(string query, bool useRegex, bool caseSensitive)
         {
@@ -5676,7 +5672,8 @@ namespace OpenTween
             {
                 SetMainWindowTitle();
             }
-            if (!StatusLabelUrl.Text.StartsWith("http")) SetStatusLabelUrl();
+            if (!StatusLabelUrl.Text.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                SetStatusLabelUrl();
             foreach (TabPage tb in ListTab.TabPages)
             {
                 if (_statuses.Tabs[tb.Text].UnreadCount == 0)
@@ -6841,7 +6838,7 @@ namespace OpenTween
                 catch (WebApiException ex)
                 {
                     this.StatusLabel.Text = $"Err:{ex.Message}(GetStatus)";
-                    await this.OpenUriInBrowserAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
+                    await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(inReplyToUser, inReplyToId));
                     return;
                 }
 
@@ -6850,7 +6847,7 @@ namespace OpenTween
                 inReplyPost = inReplyToPosts.FirstOrDefault();
                 if (inReplyPost == null)
                 {
-                    await this.OpenUriInBrowserAsync("https://twitter.com/" + inReplyToUser + "/statuses/" + inReplyToId.ToString());
+                    await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(inReplyToUser, inReplyToId));
                     return;
                 }
             }
@@ -7364,9 +7361,9 @@ namespace OpenTween
                             if (post.IsProtect) protect = "Protect";
                             sw.WriteLine(post.Nickname + "\t" +
                                      "\"" + post.TextFromApi.Replace("\n", "").Replace("\"", "\"\"") + "\"" + "\t" +
-                                     post.CreatedAt.ToString() + "\t" +
+                                     post.CreatedAt + "\t" +
                                      post.ScreenName + "\t" +
-                                     post.StatusId.ToString() + "\t" +
+                                     post.StatusId + "\t" +
                                      post.ImageUrl + "\t" +
                                      "\"" + post.Text.Replace("\n", "").Replace("\"", "\"\"") + "\"" + "\t" +
                                      protect);
@@ -7381,9 +7378,9 @@ namespace OpenTween
                             if (post.IsProtect) protect = "Protect";
                             sw.WriteLine(post.Nickname + "\t" +
                                      "\"" + post.TextFromApi.Replace("\n", "").Replace("\"", "\"\"") + "\"" + "\t" +
-                                     post.CreatedAt.ToString() + "\t" +
+                                     post.CreatedAt + "\t" +
                                      post.ScreenName + "\t" +
-                                     post.StatusId.ToString() + "\t" +
+                                     post.StatusId + "\t" +
                                      post.ImageUrl + "\t" +
                                      "\"" + post.Text.Replace("\n", "").Replace("\"", "\"\"") + "\"" + "\t" +
                                      protect);
@@ -7466,7 +7463,6 @@ namespace OpenTween
         private void ListTab_MouseDown(object sender, MouseEventArgs e)
         {
             if (this._cfgCommon.TabMouseLock) return;
-            Point cpos = new Point(e.X, e.Y);
             if (e.Button == MouseButtons.Left)
             {
                 for (int i = 0; i < ListTab.TabPages.Count; i++)
@@ -8930,10 +8926,10 @@ namespace OpenTween
             StatusLabel.Text = text;
         }
 
-        private static StringBuilder ur = new StringBuilder(64);
-
         private void SetNotifyIconText()
         {
+            var ur = new StringBuilder(64);
+
             // タスクトレイアイコンのツールチップテキスト書き換え
             // Tween [未読/@]
             ur.Remove(0, ur.Length);
@@ -9132,7 +9128,7 @@ namespace OpenTween
                 if (_statuses.ContainsKey(_curPost.InReplyToStatusId.Value))
                 {
                     PostClass repPost = _statuses[_curPost.InReplyToStatusId.Value];
-                    MessageBox.Show(repPost.ScreenName + " / " + repPost.Nickname + "   (" + repPost.CreatedAt.ToString() + ")" + Environment.NewLine + repPost.TextFromApi);
+                    MessageBox.Show($"{repPost.ScreenName} / {repPost.Nickname}   ({repPost.CreatedAt})" + Environment.NewLine + repPost.TextFromApi);
                 }
                 else
                 {
@@ -9140,7 +9136,7 @@ namespace OpenTween
                     {
                         if (tb == null || !tb.Contains(_curPost.InReplyToStatusId.Value)) break;
                         PostClass repPost = _statuses[_curPost.InReplyToStatusId.Value];
-                        MessageBox.Show(repPost.ScreenName + " / " + repPost.Nickname + "   (" + repPost.CreatedAt.ToString() + ")" + Environment.NewLine + repPost.TextFromApi);
+                        MessageBox.Show($"{repPost.ScreenName} / {repPost.Nickname}   ({repPost.CreatedAt})" + Environment.NewLine + repPost.TextFromApi);
                         return;
                     }
                     await this.OpenUriInBrowserAsync(MyCommon.GetStatusUrl(_curPost.InReplyToUser, _curPost.InReplyToStatusId.Value));
@@ -9211,7 +9207,7 @@ namespace OpenTween
             {
                 string tmp = StatusText.SelectedText;
                 // httpから始まらない場合、ExcludeStringで指定された文字列で始まる場合は対象としない
-                if (tmp.StartsWith("http"))
+                if (tmp.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
                     // 文字列が選択されている場合はその文字列について処理
 
@@ -10706,7 +10702,7 @@ namespace OpenTween
                         for (int i = 2; i <= 100; i++)
                         {
                             if (!_statuses.ContainsTab(renamed)) break;
-                            renamed = TabName + i.ToString();
+                            renamed = TabName + i;
                         }
                         tb.TabName = renamed;
 
@@ -10724,7 +10720,7 @@ namespace OpenTween
                     for (int i = 1; i < int.MaxValue; i++)
                     {
                         if (!_statuses.ContainsTab(renamed)) break;
-                        renamed = tb.TabName + "(" + i.ToString() + ")";
+                        renamed = tb.TabName + "(" + i + ")";
                     }
                     tb.TabName = renamed;
 
@@ -11570,7 +11566,7 @@ namespace OpenTween
                 _statuses.SetReadHomeTab(); //新着時未読クリア
             }
 
-            int rsltAddCount = _statuses.DistributePosts();
+            this._statuses.DistributePosts();
 
             if (this._cfgCommon.UserstreamPeriod > 0) return;
 
@@ -11717,7 +11713,7 @@ namespace OpenTween
                 title.Append("] by ");
                 if (!string.IsNullOrEmpty(ev.Username))
                 {
-                    title.Append(ev.Username.ToString());
+                    title.Append(ev.Username);
                 }
                 else
                 {
