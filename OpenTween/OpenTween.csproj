@@ -51,6 +51,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Net.Http.WebRequest" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Web" />
     <Reference Include="System.Windows.Forms" />
@@ -68,22 +69,25 @@
       <DependentUpon>ApiInfoDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Api\ApiLimit.cs" />
-    <Compile Include="Api\GeoJson.cs" />
-    <Compile Include="Api\TwitterConfiguration.cs" />
-    <Compile Include="Api\TwitterEntity.cs" />
-    <Compile Include="Api\TwitterError.cs" />
-    <Compile Include="Api\TwitterFriendship.cs" />
-    <Compile Include="Api\TwitterList.cs" />
-    <Compile Include="Api\TwitterPageable.cs">
+    <Compile Include="Api\DataModel\GeoJson.cs" />
+    <Compile Include="Api\DataModel\TwitterConfiguration.cs" />
+    <Compile Include="Api\DataModel\TwitterEntity.cs" />
+    <Compile Include="Api\DataModel\TwitterError.cs" />
+    <Compile Include="Api\DataModel\TwitterFriendship.cs" />
+    <Compile Include="Api\DataModel\TwitterList.cs" />
+    <Compile Include="Api\DataModel\TwitterPageable.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Api\TwitterPlace.cs" />
-    <Compile Include="Api\TwitterSearchResult.cs" />
-    <Compile Include="Api\TwitterStatus.cs" />
-    <Compile Include="Api\TwitterStreamEvent.cs" />
-    <Compile Include="Api\TwitterUploadMediaResult.cs" />
-    <Compile Include="Api\TwitterUser.cs" />
-    <Compile Include="Api\TwitterApiAccessLevel.cs" />
+    <Compile Include="Api\DataModel\TwitterPlace.cs" />
+    <Compile Include="Api\DataModel\TwitterRateLimits.cs" />
+    <Compile Include="Api\DataModel\TwitterSearchResult.cs" />
+    <Compile Include="Api\DataModel\TwitterStatus.cs" />
+    <Compile Include="Api\DataModel\TwitterStreamEvent.cs" />
+    <Compile Include="Api\DataModel\TwitterUploadMediaResult.cs" />
+    <Compile Include="Api\DataModel\TwitterUser.cs" />
+    <Compile Include="Api\DataModel\TwitterApiAccessLevel.cs" />
+    <Compile Include="Api\TwitterApi.cs" />
+    <Compile Include="Api\TwitterApiException.cs" />
     <Compile Include="Api\TwitterApiStatus.cs" />
     <Compile Include="ApplicationEvents.cs">
       <SubType>Code</SubType>
@@ -108,22 +112,18 @@
       <DependentUpon>AuthDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Bing.cs" />
-    <Compile Include="Connection\HttpOAuthApiProxy.cs" />
-    <Compile Include="Connection\HttpTwitter.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Connection\HttpVarious.cs" />
-    <Compile Include="Connection\HttpConnectionOAuth.cs" />
-    <Compile Include="Connection\HttpConnectionOAuthEcho.cs" />
-    <Compile Include="Connection\IHttpConnection.cs" />
+    <Compile Include="Connection\IApiConnection.cs" />
     <Compile Include="Connection\IMediaUploadService.cs" />
     <Compile Include="Connection\imgly.cs" />
     <Compile Include="Connection\Imgur.cs" />
+    <Compile Include="Connection\LazyJson.cs" />
     <Compile Include="Connection\Mobypicture.cs" />
     <Compile Include="Connection\Networking.cs" />
+    <Compile Include="Connection\OAuthEchoHandler.cs" />
     <Compile Include="Connection\OAuthHandler.cs" />
     <Compile Include="Connection\OAuthUtility.cs" />
     <Compile Include="Connection\TwipplePhoto.cs" />
+    <Compile Include="Connection\TwitterApiConnection.cs" />
     <Compile Include="EmojiFormatter.cs" />
     <Compile Include="EventViewerDialog.cs">
       <SubType>Form</SubType>
@@ -140,7 +140,27 @@
     </Compile>
     <Compile Include="IndexedSortedSet.cs" />
     <Compile Include="MediaItem.cs" />
+    <Compile Include="Models\ComparerMode.cs" />
+    <Compile Include="Models\DirectMessagesTabModel.cs" />
+    <Compile Include="Models\FavoritesTabModel.cs" />
+    <Compile Include="Models\FilterTabModel.cs" />
+    <Compile Include="Models\HomeTabModel.cs" />
+    <Compile Include="Models\InternalStorageTabModel.cs" />
+    <Compile Include="Models\ListTimelineTabModel.cs" />
+    <Compile Include="Models\LocalSearchTabModel.cs" />
+    <Compile Include="Models\MediaInfo.cs" />
+    <Compile Include="Models\MentionsTabModel.cs" />
+    <Compile Include="Models\MuteTabModel.cs" />
+    <Compile Include="Models\PostClass.cs" />
+    <Compile Include="Models\PublicSearchTabModel.cs" />
+    <Compile Include="Models\RelatedPostsTabModel.cs" />
+    <Compile Include="Models\TabModel.cs" />
+    <Compile Include="Models\TabInformations.cs" />
+    <Compile Include="Models\TabUsageTypeExt.cs" />
+    <Compile Include="Models\UserTimelineTabModel.cs" />
     <Compile Include="MouseWheelMessageFilter.cs" />
+    <Compile Include="NotifyPropertyChangedBase.cs" />
+    <Compile Include="ReaderWriterLockTransaction.cs" />
     <Compile Include="SendErrorReportForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -148,6 +168,13 @@
       <DependentUpon>SendErrorReportForm.cs</DependentUpon>
     </Compile>
     <Compile Include="ShortcutCommand.cs" />
+    <Compile Include="Thumbnail\Services\PbsTwimgCom.cs" />
+    <Compile Include="TweetDetailsView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TweetDetailsView.Designer.cs">
+      <DependentUpon>TweetDetailsView.cs</DependentUpon>
+    </Compile>
     <Compile Include="TweetExtractor.cs" />
     <Compile Include="WaitingDialog.cs">
       <SubType>Form</SubType>
@@ -176,7 +203,7 @@
     <Compile Include="OTSplitContainer.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="PostFilterRule.cs" />
+    <Compile Include="Models\PostFilterRule.cs" />
     <Compile Include="HashtagManage.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -391,7 +418,6 @@
     <Compile Include="UserInfoDialog.Designer.cs">
       <DependentUpon>UserInfoDialog.cs</DependentUpon>
     </Compile>
-    <Compile Include="StatusDictionary.cs" />
     <Compile Include="ToolStripAPIGauge.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -415,9 +441,6 @@
     <Compile Include="WebApiException.cs" />
     <Compile Include="WebBrowserController.cs" />
     <Compile Include="ControlTransaction.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Connection\HttpConnection.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="ApiInfoDialog.resx">
@@ -511,6 +534,17 @@
     </EmbeddedResource>
     <EmbeddedResource Include="SendErrorReportForm.resx">
       <DependentUpon>SendErrorReportForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TweetDetailsView.en.resx">
+      <DependentUpon>TweetDetailsView.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TweetDetailsView.resx">
+      <DependentUpon>TweetDetailsView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TweetDetailsView.zh-CHS.resx">
+      <DependentUpon>TweetDetailsView.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="WaitingDialog.resx">
       <DependentUpon>WaitingDialog.cs</DependentUpon>

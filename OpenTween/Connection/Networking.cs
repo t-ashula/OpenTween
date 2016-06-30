@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
+using System.Net.Cache;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -103,6 +104,7 @@ namespace OpenTween.Connection
             Networking.initialized = true;
 
             ServicePointManager.Expect100Continue = false;
+            WebRequest.DefaultCachePolicy = new RequestCachePolicy(RequestCacheLevel.Default);
         }
 
         public static void SetWebProxy(ProxyType proxyType, string proxyAddress, int proxyPort,
@@ -134,15 +136,16 @@ namespace OpenTween.Connection
         }
 
         /// <summary>
-        /// プロキシ等の設定を施した HttpClient インスタンスを生成します
+        /// OpenTween で必要な設定を施した HttpClientHandler インスタンスを生成します
         /// </summary>
-        /// <remarks>
-        /// 通常は Networking.Http を使用すべきです。
-        /// このメソッドを使用する場合は、WebProxyChanged イベントが発生する度に HttpClient を生成し直すように実装してください。
-        /// </remarks>
         [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
-        public static HttpClient CreateHttpClient(HttpClientHandler handler)
+        public static WebRequestHandler CreateHttpClientHandler()
         {
+            var handler = new WebRequestHandler
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            };
+
             if (Networking.Proxy != null)
             {
                 handler.UseProxy = true;
@@ -153,6 +156,19 @@ namespace OpenTween.Connection
                 handler.UseProxy = false;
             }
 
+            return handler;
+        }
+
+        /// <summary>
+        /// OpenTween で必要な設定を施した HttpClient インスタンスを生成します
+        /// </summary>
+        /// <remarks>
+        /// 通常は Networking.Http を使用すべきです。
+        /// このメソッドを使用する場合は、WebProxyChanged イベントが発生する度に HttpClient を生成し直すように実装してください。
+        /// </remarks>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
+        public static HttpClient CreateHttpClient(HttpMessageHandler handler)
+        {
             HttpClient client;
             if (ForceIPv4)
                 client = new HttpClient(new ForceIPv4Handler(handler));
@@ -185,7 +201,7 @@ namespace OpenTween.Connection
         [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
         private static void OnWebProxyChanged(EventArgs e)
         {
-            var newClient = Networking.CreateHttpClient(new HttpClientHandler());
+            var newClient = Networking.CreateHttpClient(Networking.CreateHttpClientHandler());
             var oldClient = Interlocked.Exchange(ref globalHttpClient, newClient);
             oldClient.Dispose();
 

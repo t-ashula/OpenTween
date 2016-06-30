@@ -32,6 +32,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Text.RegularExpressions;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
@@ -53,8 +54,8 @@ namespace OpenTween.Thumbnail.Services
 
                 return new ThumbnailInfo
                 {
-                    ImageUrl = url,
-                    ThumbnailUrl = imgUrl,
+                    MediaPageUrl = url,
+                    ThumbnailImageUrl = imgUrl,
                     TooltipText = null,
                     IsPlayable = true,
                 };

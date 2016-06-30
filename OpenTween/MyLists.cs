@@ -32,6 +32,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using OpenTween.Models;
 
 namespace OpenTween
 {
@@ -68,15 +69,12 @@ namespace OpenTween
                 List<PostClass> listPost = new List<PostClass>();
                 List<PostClass> otherPost = new List<PostClass>();
 
-                foreach (TabClass tab in TabInformations.GetInstance().Tabs.Values)
+                foreach (var tab in TabInformations.GetInstance().GetTabsByType<ListTimelineTabModel>())
                 {
-                    if (tab.TabType == MyCommon.TabUsageType.Lists)
-                    {
-                        if (listItem.Id == tab.ListInfo.Id)
-                            listPost.AddRange(tab.Posts.Values);
-                        else
-                            otherPost.AddRange(tab.Posts.Values);
-                    }
+                    if (listItem.Id == tab.ListInfo.Id)
+                        listPost.AddRange(tab.Posts.Values);
+                    else
+                        otherPost.AddRange(tab.Posts.Values);
                 }
 
                 //リストが空の場合は推定不能
@@ -140,66 +138,55 @@ namespace OpenTween
             this.ListsCheckedListBox.ItemCheck += this.ListsCheckedListBox_ItemCheck;
         }
 
-        private void ListRefreshButton_Click(object sender, EventArgs e)
+        private async void ListRefreshButton_Click(object sender, EventArgs e)
         {
-            try
+            using (ControlTransaction.Disabled(this))
             {
-                this._tw.GetListsApi();
-            }
-            catch (WebApiException ex)
-            {
-                MessageBox.Show(string.Format(Properties.Resources.ListsDeleteFailed, ex.Message));
-                return;
-            }
+                try
+                {
+                    await this._tw.GetListsApi();
+                }
+                catch (WebApiException ex)
+                {
+                    MessageBox.Show(string.Format(Properties.Resources.ListsDeleteFailed, ex.Message));
+                    return;
+                }
 
-            this.ListsCheckedListBox.Items.Clear();
-            this.MyLists_Load(this, EventArgs.Empty);
+                this.ListsCheckedListBox.Items.Clear();
+                this.MyLists_Load(this, EventArgs.Empty);
+            }
         }
 
-        private void ListsCheckedListBox_ItemCheck(object sender, ItemCheckEventArgs e)
+        private async void ListsCheckedListBox_ItemCheck(object sender, ItemCheckEventArgs e)
         {
-            ListElement list = (ListElement)this.ListsCheckedListBox.Items[e.Index];
-
-            switch (e.CurrentValue)
+            using (ControlTransaction.Disabled(this))
             {
-                case CheckState.Indeterminate:
-                    try
-                    {
-                        var ret = this._tw.ContainsUserAtList(list.Id.ToString(), contextUserName);
+                ListElement list = (ListElement)this.ListsCheckedListBox.Items[e.Index];
 
-                        if (ret)
-                            e.NewValue = CheckState.Checked;
-                        else
-                            e.NewValue = CheckState.Unchecked;
-                    }
-                    catch (WebApiException ex)
+                try
+                {
+                    switch (e.CurrentValue)
                     {
-                        MessageBox.Show(string.Format(Properties.Resources.ListManageOKButton2, ex.Message));
-                        e.NewValue = CheckState.Indeterminate;
+                        case CheckState.Indeterminate:
+                            var ret = await this._tw.ContainsUserAtList(list.Id, this.contextUserName);
+                            if (ret)
+                                e.NewValue = CheckState.Checked;
+                            else
+                                e.NewValue = CheckState.Unchecked;
+                            break;
+                        case CheckState.Unchecked:
+                            await this._tw.Api.ListsMembersCreate(list.Id, this.contextUserName);
+                            break;
+                        case CheckState.Checked:
+                            await this._tw.Api.ListsMembersDestroy(list.Id, this.contextUserName);
+                            break;
                     }
-                    break;
-                case CheckState.Unchecked:
-                    try
-                    {
-                        this._tw.AddUserToList(list.Id.ToString(), this.contextUserName.ToString());
-                    }
-                    catch (WebApiException ex)
-                    {
-                        MessageBox.Show(string.Format(Properties.Resources.ListManageOKButton2, ex.Message));
-                        e.NewValue = CheckState.Indeterminate;
-                    }
-                    break;
-                case CheckState.Checked:
-                    try
-                    {
-                        this._tw.RemoveUserToList(list.Id.ToString(), this.contextUserName.ToString());
-                    }
-                    catch (WebApiException ex)
-                    {
-                        MessageBox.Show(string.Format(Properties.Resources.ListManageOKButton2, ex.Message));
-                        e.NewValue = CheckState.Indeterminate;
-                    }
-                    break;
+                }
+                catch (WebApiException ex)
+                {
+                    MessageBox.Show(string.Format(Properties.Resources.ListManageOKButton2, ex.Message));
+                    e.NewValue = CheckState.Indeterminate;
+                }
             }
         }
 

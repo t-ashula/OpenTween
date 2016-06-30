@@ -29,13 +29,14 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenTween.Connection;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
     class Pixiv : MetaThumbnailService
     {
         public static readonly string UrlPattern =
-            @"^https?://www\.pixiv\.net/(member_illust|index)\.php\?(?=.*mode=(medium|big))(?=.*illust_id=(?<illustId>[0-9]+)).*$";
+            @"^https?://(www|touch)\.pixiv\.net/(member_illust|index)\.php\?(?=.*mode=(medium|big))(?=.*illust_id=(?<illustId>[0-9]+)).*$";
 
         public Pixiv()
             : base(Pixiv.UrlPattern)
@@ -56,8 +57,8 @@ namespace OpenTween.Thumbnail.Services
 
             return new Pixiv.Thumbnail
             {
-                ImageUrl = thumb.ImageUrl,
-                ThumbnailUrl = thumb.ThumbnailUrl,
+                MediaPageUrl = thumb.MediaPageUrl,
+                ThumbnailImageUrl = thumb.ThumbnailImageUrl,
                 TooltipText = thumb.TooltipText,
                 FullSizeImageUrl = thumb.FullSizeImageUrl,
             };
@@ -67,10 +68,10 @@ namespace OpenTween.Thumbnail.Services
         {
             public async override Task<MemoryImage> LoadThumbnailImageAsync(HttpClient http, CancellationToken cancellationToken)
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, this.ThumbnailUrl);
+                var request = new HttpRequestMessage(HttpMethod.Get, this.ThumbnailImageUrl);
 
                 request.Headers.Add("User-Agent", Networking.GetUserAgentString(fakeMSIE: true));
-                request.Headers.Referrer = new Uri(this.ImageUrl);
+                request.Headers.Referrer = new Uri(this.MediaPageUrl);
 
                 using (var response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {

@@ -35,6 +35,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Globalization;
 
 namespace OpenTween
 {
@@ -77,7 +78,7 @@ namespace OpenTween
 
         private ListViewItem CreateListViewItem(Twitter.FormattedEvent source)
         {
-            string[] s = { source.CreatedAt.ToString(), source.Event.ToUpper(), source.Username, source.Target };
+            string[] s = { source.CreatedAt.ToString(), source.Event.ToUpper(CultureInfo.CurrentCulture), source.Username, source.Target };
             return new ListViewItem(s);
         }
 
@@ -141,7 +142,7 @@ namespace OpenTween
         {
             if (EventSource != null && EventSource.Count > 0)
             {
-                _filterdEventSource = EventSource.FindAll((x) => (CheckExcludeMyEvent.Checked ? !x.IsMe : true) &&
+                _filterdEventSource = EventSource.FindAll((x) => !(CheckExcludeMyEvent.Checked && x.IsMe) &&
                                                                  (x.Eventtype & ParseEventTypeFromTag()) != 0 &&
                                                                  IsFilterMatch(x)).ToArray();
                 _ItemCache = null;
@@ -233,7 +234,7 @@ namespace OpenTween
             switch (rslt)
             {
                 case DialogResult.Yes:
-                    SaveFileDialog1.FileName = MyCommon.GetAssemblyName() + "Events" + _curTab.Tag.ToString() + DateTime.Now.ToString("yyMMdd-HHmmss") + ".tsv";
+                    SaveFileDialog1.FileName = MyCommon.GetAssemblyName() + "Events" + _curTab.Tag + DateTime.Now.ToString("yyMMdd-HHmmss") + ".tsv";
                     break;
                 case DialogResult.No:
                     SaveFileDialog1.FileName = MyCommon.GetAssemblyName() + "Events" + DateTime.Now.ToString("yyMMdd-HHmmss") + ".tsv";
@@ -274,12 +275,12 @@ namespace OpenTween
         {
             foreach (Twitter.FormattedEvent _event in source)
             {
-                sw.WriteLine(_event.Eventtype.ToString() + "\t" +
-                             "\"" + _event.CreatedAt.ToString() + "\"\t" +
+                sw.WriteLine(_event.Eventtype + "\t" +
+                             "\"" + _event.CreatedAt + "\"\t" +
                              _event.Event + "\t" +
                              _event.Username + "\t" +
                              _event.Target + "\t" +
-                             _event.Id.ToString());
+                             _event.Id);
             }
         }
 

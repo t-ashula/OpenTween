@@ -33,6 +33,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using OpenTween.Connection;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
@@ -90,8 +91,8 @@ namespace OpenTween.Thumbnail.Services
 
                 return new ThumbnailInfo
                 {
-                    ImageUrl = url,
-                    ThumbnailUrl = thumbUrlElm.Value,
+                    MediaPageUrl = url,
+                    ThumbnailImageUrl = thumbUrlElm.Value,
                     TooltipText = tooltipText,
                     IsPlayable = true,
                 };

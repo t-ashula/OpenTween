@@ -23,27 +23,42 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail
 {
     class MapThumbGoogle : MapThumb
     {
-        public override string CreateStaticMapUrl(double latitude, double longitude)
+        public override Task<ThumbnailInfo> GetThumbnailInfoAsync(PostClass.StatusGeo geo)
+        {
+            var thumb = new ThumbnailInfo
+            {
+                MediaPageUrl = this.CreateMapLinkUrl(geo.Latitude, geo.Longitude),
+                ThumbnailImageUrl = this.CreateStaticMapUrl(geo.Latitude, geo.Longitude),
+                TooltipText = null,
+            };
+
+            return Task.FromResult(thumb);
+        }
+
+        public string CreateStaticMapUrl(double latitude, double longitude)
         {
             var width = SettingCommon.Instance.MapThumbnailWidth; // この辺なんとかならんかなあ
             var height = SettingCommon.Instance.MapThumbnailHeight;
             var zoom = SettingCommon.Instance.MapThumbnailZoom;
-            var location = latitude.ToString() + "," + longitude.ToString();
+            var location = latitude + "," + longitude;
 
             var baseUrl = "https://maps.googleapis.com/maps/api/staticmap";
 
             return baseUrl + "?center=" + location + "&size=" + width + "x" + height + "&zoom=" + zoom + "&markers=" + location + "&sensor=false";
         }
 
-        public override string CreateMapLinkUrl(double latitude, double longitude)
+        public string CreateMapLinkUrl(double latitude, double longitude)
         {
             var zoom = SettingCommon.Instance.MapThumbnailZoom;
-            var location = latitude.ToString() + "," + longitude.ToString();
+            var location = latitude + "," + longitude;
 
             var baseUrl = "https://maps.google.co.jp/maps";
 

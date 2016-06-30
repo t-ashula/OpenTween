@@ -213,14 +213,19 @@ namespace OpenTween
             var selfLength = this.Stream.Length;
             var otherLength = other.Stream.Length;
 
-            // Enumerable.Take() が int 型しか受け付けないのでとりあえず int 型の範囲まで許容
-            if (selfLength > int.MaxValue || otherLength > int.MaxValue)
-                throw new ArgumentOutOfRangeException();
+            if (selfLength != otherLength)
+                return false;
 
-            var selfBytes = this.Stream.GetBuffer().Take((int)this.Stream.Length);
-            var otherBytes = other.Stream.GetBuffer().Take((int)this.Stream.Length);
+            var selfBuffer = this.Stream.GetBuffer();
+            var otherBuffer = other.Stream.GetBuffer();
 
-            return selfBytes.SequenceEqual(otherBytes);
+            for (var pos = 0L; pos < selfLength; pos++)
+            {
+                if (selfBuffer[pos] != otherBuffer[pos])
+                    return false;
+            }
+
+            return true;
         }
 
         object ICloneable.Clone()
@@ -364,7 +369,7 @@ namespace OpenTween
     [Serializable]
     public class InvalidImageException : Exception
     {
-        public InvalidImageException() : base() { }
+        public InvalidImageException() { }
         public InvalidImageException(string message) : base(message) { }
         public InvalidImageException(string message, Exception innerException) : base(message, innerException) { }
         protected InvalidImageException(SerializationInfo info, StreamingContext context) : base(info, context) { }

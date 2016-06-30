@@ -28,7 +28,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween.Connection
 {
@@ -77,6 +77,8 @@ namespace OpenTween.Connection
             }
         }
 
+        public bool CanUseAltText => false;
+
         public bool CheckFileExtension(string fileExtension)
         {
             return SupportedExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase);
@@ -119,6 +121,10 @@ namespace OpenTween.Connection
             {
                 throw new WebApiException("Err:" + ex.Message, ex);
             }
+            catch (OperationCanceledException ex)
+            {
+                throw new WebApiException("Err:Timeout", ex);
+            }
 
             var imageElm = xml.Element("data");
 
@@ -129,7 +135,7 @@ namespace OpenTween.Connection
 
             var textWithImageUrl = text + " " + imageUrl.Trim();
 
-            await Task.Run(() => this.twitter.PostStatus(textWithImageUrl, inReplyToStatusId))
+            await this.twitter.PostStatus(textWithImageUrl, inReplyToStatusId)
                 .ConfigureAwait(false);
         }
 

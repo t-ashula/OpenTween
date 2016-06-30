@@ -48,8 +48,8 @@ namespace OpenTween.Thumbnail.Services
             {
                 new ThumbnailInfo
                 {
-                    ImageUrl = "http://example.com/post/1234567",
-                    ThumbnailUrl = "http://example.com/photo/1280/1234567/1/tumblr_hogehoge",
+                    MediaPageUrl = "http://example.com/post/1234567",
+                    ThumbnailImageUrl = "http://example.com/photo/1280/1234567/1/tumblr_hogehoge",
                     TooltipText = null,
                 },
             };
@@ -86,7 +86,7 @@ namespace OpenTween.Thumbnail.Services
                 var service = new Tumblr(http);
 
                 var url = "http://hoge.tumblr.com/post/1234567/tetetete";
-                var thumb = await service.GetThumbnailInfoAsync(url, null, CancellationToken.None)
+                await service.GetThumbnailInfoAsync(url, null, CancellationToken.None)
                     .ConfigureAwait(false);
             }
 
@@ -124,7 +124,7 @@ namespace OpenTween.Thumbnail.Services
 
                 // Tumblrのカスタムドメイン名を使ってるっぽいURL
                 var url = "http://tumblr.example.com/post/1234567/tetetete";
-                var thumb = await service.GetThumbnailInfoAsync(url, null, CancellationToken.None)
+                await service.GetThumbnailInfoAsync(url, null, CancellationToken.None)
                     .ConfigureAwait(false);
             }
 

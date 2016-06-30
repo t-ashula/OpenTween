@@ -30,6 +30,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenTween.Connection;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
@@ -42,6 +43,7 @@ namespace OpenTween.Thumbnail.Services
 
         protected string[] ExcludedServiceNames =
         {
+            "Twitter",
             "Tumblr",
             "Gyazo",
         };
@@ -106,7 +108,7 @@ namespace OpenTween.Thumbnail.Services
 
         protected void StartAutoUpdate()
         {
-            this.UpdateTimer.Change(0, 30 * 60 * 1000); ; // 30分おきに更新
+            this.UpdateTimer.Change(0, 30 * 60 * 1000); // 30分おきに更新
         }
 
         protected void StopAutoUpdate()
@@ -209,8 +211,8 @@ namespace OpenTween.Thumbnail.Services
                         {
                             return new ThumbnailInfo
                             {
-                                ImageUrl = url,
-                                ThumbnailUrl = this.ApiBase + "redirect?size=large&uri=" + Uri.EscapeDataString(url),
+                                MediaPageUrl = url,
+                                ThumbnailImageUrl = this.ApiBase + "redirect?size=large&uri=" + Uri.EscapeDataString(url),
                                 FullSizeImageUrl = this.ApiBase + "redirect?size=full&uri=" + Uri.EscapeDataString(url),
                                 TooltipText = null,
                             };

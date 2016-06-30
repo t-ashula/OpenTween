@@ -21,6 +21,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -40,11 +41,6 @@ namespace OpenTween.Connection
         public string AccessToken { get; }
         public string AccessSecret { get; }
 
-        public OAuthHandler(string consumerKey, string consumerSecret, string accessToken, string accessSecret)
-            : this(new HttpClientHandler(), consumerKey, consumerSecret, accessToken, accessSecret)
-        {
-        }
-
         public OAuthHandler(HttpMessageHandler innerHandler, string consumerKey, string consumerSecret, string accessToken, string accessSecret)
             : base(innerHandler)
         {
@@ -62,6 +58,13 @@ namespace OpenTween.Connection
             var credential = OAuthUtility.CreateAuthorization(request.Method.ToString().ToUpperInvariant(), request.RequestUri, query,
                 this.ConsumerKey, this.ConsumerSecret, this.AccessToken, this.AccessSecret);
             request.Headers.TryAddWithoutValidation("Authorization", credential);
+
+            var postContent = request.Content as FormUrlEncodedContent;
+            if (postContent != null)
+            {
+                request.Content = new StringContent(MyCommon.BuildQueryString(query), Encoding.UTF8, "application/x-www-form-urlencoded");
+                postContent.Dispose();
+            }
 
             return await base.SendAsync(request, cancellationToken)
                 .ConfigureAwait(false);

@@ -25,7 +25,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween
 {
@@ -115,7 +115,7 @@ namespace OpenTween
                 yield return new TwitterEntityMention
                 {
                     Indices = new[] { startPos, endPos },
-                    ScreenName = groupMention.Value,
+                    ScreenName = groupMention.Value.Substring(1), // 先頭の「@」は取り除く
                 };
             }
 
@@ -130,7 +130,7 @@ namespace OpenTween
                 yield return new TwitterEntityMention
                 {
                     Indices = new[] { startPos, endPos },
-                    ScreenName = groupMention.Value,
+                    ScreenName = groupMention.Value.Substring(1), // 先頭の「@」は取り除く
                 };
             }
         }
@@ -151,7 +151,7 @@ namespace OpenTween
                 yield return new TwitterEntityHashtag
                 {
                     Indices = new[] { startPos, endPos },
-                    Text = groupHashtagSharp.Value + groupHashtagText.Value,
+                    Text = groupHashtagText.Value,
                 };
             }
         }

@@ -47,6 +47,7 @@ using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using OpenTween.Api;
+using OpenTween.Models;
 
 namespace OpenTween
 {
@@ -196,7 +197,7 @@ namespace OpenTween
             BlinkIcon,
         }
 
-        [FlagsAttribute()]
+        [Flags]
         public enum EVENTTYPE
         {
             None = 0,
@@ -281,13 +282,13 @@ namespace OpenTween
 
                 using (var writer = new StreamWriter(fileName))
                 {
-                    writer.WriteLine("**** TraceOut: {0} ****", DateTime.Now.ToString());
+                    writer.WriteLine("**** TraceOut: {0} ****", DateTime.Now);
                     writer.WriteLine(Properties.Resources.TraceOutText1, ApplicationSettings.FeedbackEmailAddress);
                     writer.WriteLine(Properties.Resources.TraceOutText2, ApplicationSettings.FeedbackTwitterName);
                     writer.WriteLine();
                     writer.WriteLine(Properties.Resources.TraceOutText3);
                     writer.WriteLine(Properties.Resources.TraceOutText4, Environment.OSVersion.VersionString);
-                    writer.WriteLine(Properties.Resources.TraceOutText5, Environment.Version.ToString());
+                    writer.WriteLine(Properties.Resources.TraceOutText5, Environment.Version);
                     writer.WriteLine(Properties.Resources.TraceOutText6, MyCommon.GetAssemblyName(), FileVersion);
                     writer.WriteLine(Message);
                     writer.WriteLine();
@@ -390,17 +391,17 @@ namespace OpenTween
                 var princ = new WindowsPrincipal(ident);
 
                 var errorReport = string.Join(Environment.NewLine,
-                    string.Format(Properties.Resources.UnhandledExceptionText1, DateTime.Now.ToString()),
+                    string.Format(Properties.Resources.UnhandledExceptionText1, DateTime.Now),
 
                     // 権限書き出し
-                    string.Format(Properties.Resources.UnhandledExceptionText11 + princ.IsInRole(WindowsBuiltInRole.Administrator).ToString()),
-                    string.Format(Properties.Resources.UnhandledExceptionText12 + princ.IsInRole(WindowsBuiltInRole.User).ToString()),
+                    string.Format(Properties.Resources.UnhandledExceptionText11 + princ.IsInRole(WindowsBuiltInRole.Administrator)),
+                    string.Format(Properties.Resources.UnhandledExceptionText12 + princ.IsInRole(WindowsBuiltInRole.User)),
                     "",
 
                     // OSVersion,AppVersion書き出し
                     string.Format(Properties.Resources.UnhandledExceptionText4),
                     string.Format(Properties.Resources.UnhandledExceptionText5, Environment.OSVersion.VersionString),
-                    string.Format(Properties.Resources.UnhandledExceptionText6, Environment.Version.ToString()),
+                    string.Format(Properties.Resources.UnhandledExceptionText6, Environment.Version),
                     string.Format(Properties.Resources.UnhandledExceptionText7, MyCommon.GetAssemblyName(), FileVersion),
 
                     ExceptionOutMessage(ex, ref IsTerminatePermission));
@@ -416,30 +417,42 @@ namespace OpenTween
                     writer.Write(errorReport);
                 }
 
-                using (var dialog = new SendErrorReportForm())
+                var settings = SettingCommon.Instance;
+                var mainForm = Application.OpenForms.OfType<TweenMain>().FirstOrDefault();
+
+                ErrorReport report;
+                if (mainForm != null && !mainForm.IsDisposed)
+                    report = new ErrorReport(mainForm.TwitterInstance, errorReport);
+                else
+                    report = new ErrorReport(errorReport);
+
+                report.AnonymousReport = settings.ErrorReportAnonymous;
+
+                OpenErrorReportDialog(mainForm, report);
+
+                // ダイアログ内で設定が変更されていれば保存する
+                if (settings.ErrorReportAnonymous != report.AnonymousReport)
                 {
-                    var mainForm = Application.OpenForms.Cast<Form>().FirstOrDefault() as TweenMain;
-                    var settings = SettingCommon.Instance;
-
-                    ErrorReport report;
-                    if (mainForm != null)
-                        report = new ErrorReport(mainForm.TwitterInstance, errorReport);
-                    else
-                        report = new ErrorReport(errorReport);
-
-                    report.AnonymousReport = settings.ErrorReportAnonymous;
-
-                    dialog.ErrorReport = report;
-                    dialog.ShowDialog(mainForm);
-
-                    if (settings.ErrorReportAnonymous != report.AnonymousReport)
-                    {
-                        settings.ErrorReportAnonymous = report.AnonymousReport;
-                        settings.Save();
-                    }
+                    settings.ErrorReportAnonymous = report.AnonymousReport;
+                    settings.Save();
                 }
 
                 return false;
+            }
+        }
+
+        private static void OpenErrorReportDialog(Form owner, ErrorReport report)
+        {
+            if (owner != null && owner.InvokeRequired)
+            {
+                owner.Invoke((Action)(() => OpenErrorReportDialog(owner, report)));
+                return;
+            }
+
+            using (var dialog = new SendErrorReportForm())
+            {
+                dialog.ErrorReport = report;
+                dialog.ShowDialog(owner);
             }
         }
 
@@ -491,7 +504,7 @@ namespace OpenTween
                     }
                     else
                     {
-                        sb.Append("%" + Convert.ToInt16(c).ToString("X2").ToUpper());
+                        sb.Append("%" + Convert.ToInt16(c).ToString("X2").ToUpperInvariant());
                     }
                 }
                 else
@@ -506,7 +519,7 @@ namespace OpenTween
             }
             else
             {
-                result = uri.GetLeftPart(UriPartial.Authority) + sb.ToString();
+                result = uri.GetLeftPart(UriPartial.Authority) + sb;
             }
 
             return result;
@@ -519,7 +532,7 @@ namespace OpenTween
         /// ドメインラベルの区切り文字はFULLSTOP(.、U002E)に置き換えられます。
         /// </para>
         /// </summary>
-        /// <param name="input">展開対象のURL</param>
+        /// <param name="inputUrl">展開対象のURL</param>
         /// <returns>IDNが含まれていた場合はPunycodeに展開したURLをを返します。Punycode展開時にエラーが発生した場合はnullを返します。</returns>
         public static string IDNEncode(string inputUrl)
         {
@@ -743,7 +756,7 @@ namespace OpenTween
             return newBytes;
         }
 
-        [FlagsAttribute()]
+        [Flags]
         public enum TabUsageType
         {
             Undefined = 0,
@@ -831,7 +844,11 @@ namespace OpenTween
             var buf = Encoding.Unicode.GetBytes(content);
             using (var stream = new MemoryStream(buf))
             {
-                data = (T)((new DataContractJsonSerializer(typeof(T))).ReadObject(stream));
+                var settings = new DataContractJsonSerializerSettings
+                {
+                    UseSimpleDictionaryFormat = true,
+                };
+                data = (T)((new DataContractJsonSerializer(typeof(T), settings)).ReadObject(stream));
             }
             return data;
         }
@@ -980,16 +997,16 @@ namespace OpenTween
 
         public static string GetStatusUrl(string screenName, long statusId)
         {
-            return TwitterUrl + screenName + "/status/" + statusId.ToString();
+            return TwitterUrl + screenName + "/status/" + statusId;
         }
 
         /// <summary>
         /// 指定された IDictionary を元にクエリ文字列を生成します
         /// </summary>
         /// <param name="param">生成するクエリの key-value コレクション</param>
-        public static string BuildQueryString(IDictionary<string, string> param)
+        public static string BuildQueryString(IEnumerable<KeyValuePair<string, string>> param)
         {
-            if (param == null || param.Count == 0)
+            if (param == null)
                 return string.Empty;
 
             var query = param

@@ -29,6 +29,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenTween.Connection;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
@@ -90,8 +91,8 @@ namespace OpenTween.Thumbnail.Services
 
                 return new ThumbnailInfo
                 {
-                    ImageUrl = url,
-                    ThumbnailUrl = thumbnailUrl,
+                    MediaPageUrl = url,
+                    ThumbnailImageUrl = thumbnailUrl,
                     TooltipText = null,
                 };
             }

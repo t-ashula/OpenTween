@@ -25,7 +25,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween.Connection
 {
@@ -43,6 +43,11 @@ namespace OpenTween.Connection
         /// アップロード可能なファイルの種類を表す文字列 (OpenFileDialog.Filter に使用)
         /// </summary>
         string SupportedFormatsStrForDialog { get; }
+
+        /// <summary>
+        /// 代替テキストの設定が可能なサービスであるか
+        /// </summary>
+        bool CanUseAltText { get; }
 
         /// <summary>
         /// ファイルの拡張子からアップロード可能なフォーマットであるかを判定します

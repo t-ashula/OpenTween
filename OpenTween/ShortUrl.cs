@@ -72,7 +72,7 @@ namespace OpenTween
 
         private static readonly Regex HtmlLinkPattern = new Regex(@"(<a href="")(.+?)("")");
 
-        private static readonly HashSet<string> ShortUrlHosts = new HashSet<string>()
+        private static readonly HashSet<string> ShortUrlHosts = new HashSet<string>
         {
             "4sq.com",
             "airme.us",
@@ -546,13 +546,11 @@ namespace OpenTween
         [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
         private static HttpClient CreateDefaultHttpClient()
         {
-            var handler = new HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-            };
+            var handler = Networking.CreateHttpClientHandler();
+            handler.AllowAutoRedirect = false;
 
             var http = Networking.CreateHttpClient(handler);
-            http.Timeout = TimeSpan.FromSeconds(5);
+            http.Timeout = TimeSpan.FromSeconds(30);
 
             return http;
         }

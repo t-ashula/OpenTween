@@ -27,6 +27,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using OpenTween.Models;
 using OpenTween.Thumbnail.Services;
 
 namespace OpenTween.Thumbnail
@@ -46,7 +47,7 @@ namespace OpenTween.Thumbnail
         {
             ImgAzyobuziNetInstance = new ImgAzyobuziNet(autoupdate: true);
 
-            ThumbnailGenerator.Services = new List<IThumbnailService>()
+            ThumbnailGenerator.Services = new List<IThumbnailService>
             {
                 // ton.twitter.com
                 new TonTwitterCom(),
@@ -55,10 +56,7 @@ namespace OpenTween.Thumbnail
                 new TwitterComVideo(),
 
                 // pic.twitter.com
-                new SimpleThumbnailService(
-                    @"^https?://pbs\.twimg\.com/.*$",
-                    "${0}",
-                    "${0}:orig"),
+                new PbsTwimgCom(),
 
                 // youtube
                 new Youtube(),
@@ -167,7 +165,7 @@ namespace OpenTween.Thumbnail
 
                 // Instagram
                 new SimpleThumbnailService(
-                    @"^https?://(?:instagram.com|instagr\.am|i\.instagram\.com)/p/.+/",
+                    @"^https?://(?:instagram.com|instagr\.am|i\.instagram\.com|www\.instagram\.com)/p/.+/",
                     "${0}media/?size=m",
                     "${0}media/?size=l"),
 
@@ -219,9 +217,12 @@ namespace OpenTween.Thumbnail
         {
             var thumbnails = new List<ThumbnailInfo>();
 
-            foreach (var media in post.Media)
+            var expandedUrls = Enumerable.Concat(
+                post.GetExpandedUrls(), post.Media.Select(x => x.Url));
+
+            foreach (var expandedUrl in expandedUrls)
             {
-                var thumbInfo = await ThumbnailGenerator.GetThumbnailInfoAsync(media.Url, post, token)
+                var thumbInfo = await ThumbnailGenerator.GetThumbnailInfoAsync(expandedUrl, post, token)
                     .ConfigureAwait(false);
 
                 if (thumbInfo != null)
@@ -233,13 +234,9 @@ namespace OpenTween.Thumbnail
             if (post.PostGeo != null)
             {
                 var map = MapThumb.GetDefaultInstance();
-                var point = post.PostGeo.Value;
-                thumbnails.Add(new ThumbnailInfo()
-                {
-                    ImageUrl = map.CreateMapLinkUrl(point.Latitude, point.Longitude),
-                    ThumbnailUrl = map.CreateStaticMapUrl(point.Latitude, point.Longitude),
-                    TooltipText = null,
-                });
+                var thumb = await map.GetThumbnailInfoAsync(post.PostGeo.Value)
+                    .ConfigureAwait(false);
+                thumbnails.Add(thumb);
             }
 
             return thumbnails;

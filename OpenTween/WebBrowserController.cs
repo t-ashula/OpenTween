@@ -37,7 +37,7 @@ using System.Windows.Forms;
 namespace OpenTween
 {
     #region "WebBrowserAPI"
-    internal class WebBrowserAPI
+    internal static class WebBrowserAPI
     {
         public static int INET_E_DEFAULT_ACTION = unchecked((int)0x800C0011);
 
@@ -274,7 +274,7 @@ namespace OpenTween
         }
     #endregion
 
-        [Flags] public enum POLICY : int
+        [Flags] public enum POLICY
         {
             ALLOW_ACTIVEX = 0x1,
             ALLOW_SCRIPT = 0x2,
@@ -290,7 +290,7 @@ namespace OpenTween
         public InternetSecurityManager(WebBrowser _WebBrowser)
         {
             // ActiveXコントロール取得
-            _WebBrowser.DocumentText = "about:blank"; //ActiveXを初期化する
+            _WebBrowser.Url = new Uri("about:blank"); //ActiveXを初期化する
 
             do
             {

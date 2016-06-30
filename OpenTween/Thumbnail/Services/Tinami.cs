@@ -31,6 +31,7 @@ using System.Web;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using OpenTween.Connection;
+using OpenTween.Models;
 
 namespace OpenTween.Thumbnail.Services
 {
@@ -79,8 +80,8 @@ namespace OpenTween.Thumbnail.Services
 
                 return new ThumbnailInfo
                 {
-                    ImageUrl = url,
-                    ThumbnailUrl = thumbUrlElm.Attribute("url").Value,
+                    MediaPageUrl = url,
+                    ThumbnailImageUrl = thumbUrlElm.Attribute("url").Value,
                     TooltipText = descElm == null ? null : descElm.Value,
                 };
             }

@@ -32,11 +32,11 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenTween.Api;
+using OpenTween.Api.DataModel;
 
 namespace OpenTween
 {
-    public partial class SendErrorReportForm : Form
+    public partial class SendErrorReportForm : OTBaseForm
     {
         public ErrorReport ErrorReport
         {
@@ -83,7 +83,7 @@ namespace OpenTween
             }
             catch (WebApiException ex)
             {
-                var message = Properties.Resources.SendErrorReport_DmSendError + Environment.NewLine + ex.Message;
+                var message = Properties.Resources.SendErrorReport_DmSendError + Environment.NewLine + "Err:" + ex.Message;
                 MessageBox.Show(message, this.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -94,7 +94,7 @@ namespace OpenTween
         }
     }
 
-    public class ErrorReport : INotifyPropertyChanged
+    public class ErrorReport : NotifyPropertyChangedBase
     {
         public string ReportText
         {
@@ -135,8 +135,6 @@ namespace OpenTween
         private readonly Twitter tw;
         private readonly string originalReportText;
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
         public ErrorReport(string reportText)
             : this(null, reportText)
         {
@@ -161,13 +159,13 @@ namespace OpenTween
             var subject = $"{Application.ProductName} {MyCommon.GetReadableVersion()} エラーログ";
             var body = this.ReportText;
 
-            var mailto = $"mailto:{toAddress}?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";
+            var mailto = $"mailto:{Uri.EscapeDataString(toAddress)}?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";
             await Task.Run(() => Process.Start(mailto));
         }
 
         public async Task SendByDmAsync()
         {
-            await Task.Run(() => this.tw.SendDirectMessage(this.EncodedReportForDM));
+            await this.tw.SendDirectMessage(this.EncodedReportForDM);
         }
 
         private void UpdateEncodedReport()
@@ -208,20 +206,6 @@ namespace OpenTween
                 return false;
 
             return true;
-        }
-
-        protected void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value))
-                return;
-
-            field = value;
-            this.OnPropertyChanged(new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
-        {
-            this.PropertyChanged?.Invoke(this, e);
         }
     }
 }

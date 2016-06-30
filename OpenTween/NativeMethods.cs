@@ -153,6 +153,7 @@ namespace OpenTween
         }
 
         [DllImport("user32")]
+        [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         /// <summary>
@@ -196,6 +197,7 @@ namespace OpenTween
         }
         /// http://www.atmarkit.co.jp/fdotnet/dotnettips/723flashwindow/flashwindow.html
         [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool FlashWindowEx(
             ref FLASHWINFO FWInfo);
 
@@ -224,6 +226,7 @@ namespace OpenTween
         #endregion
 
         [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool ValidateRect(
             IntPtr hwnd,
             IntPtr rect);
@@ -244,10 +247,11 @@ namespace OpenTween
 
         #region "スクリーンセーバー起動中か判定"
         [DllImport("user32", CharSet = CharSet.Auto)]
-        private static extern int SystemParametersInfo(
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SystemParametersInfo(
                     int intAction,
                     int intParam,
-                    ref bool bParam,
+                    [MarshalAs(UnmanagedType.Bool)] ref bool bParam,
                     int intWinIniFlag);
         // returns non-zero value if function succeeds
 
@@ -282,7 +286,7 @@ namespace OpenTween
             {
                 // use the GlobalAddAtom API to get a unique ID (as suggested by MSDN docs)
                 registerCount++;
-                var atomName = Thread.CurrentThread.ManagedThreadId.ToString("X8") + targetForm.Name + registerCount.ToString();
+                var atomName = Thread.CurrentThread.ManagedThreadId.ToString("X8") + targetForm.Name + registerCount;
                 hotkeyID = GlobalAddAtom(atomName);
                 if (hotkeyID == 0)
                 {
@@ -320,15 +324,10 @@ namespace OpenTween
         #region "プロセスのProxy設定"
 
         [DllImport("wininet.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool InternetSetOption(IntPtr hInternet,
             InternetOption dwOption,
             [In] ref InternetProxyInfo lpBuffer,
-            int lpdwBufferLength);
-
-        [DllImport("wininet.dll", SetLastError = true, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-        private static extern bool InternetSetOption(IntPtr hInternet,
-            InternetOption dwOption,
-            string lpBuffer,
             int lpdwBufferLength);
 
         private enum InternetOption
@@ -405,26 +404,6 @@ namespace OpenTween
                 throw new Win32Exception();
         }
 
-        private static void RefreshProxyAccount(string username, string password)
-        {
-            if (!string.IsNullOrEmpty(username) || !string.IsNullOrEmpty(password))
-            {
-                if (!InternetSetOption(IntPtr.Zero, InternetOption.PROXY_USERNAME, (string)null, 0))
-                    throw new Win32Exception();
-
-                if (!InternetSetOption(IntPtr.Zero, InternetOption.PROXY_PASSWORD, (string)null, 0))
-                    throw new Win32Exception();
-            }
-            else
-            {
-                if (!InternetSetOption(IntPtr.Zero, InternetOption.PROXY_USERNAME, username, username.Length + 1))
-                    throw new Win32Exception();
-
-                if (!InternetSetOption(IntPtr.Zero, InternetOption.PROXY_PASSWORD, password, password.Length + 1))
-                    throw new Win32Exception();
-            }
-        }
-
         public static void SetProxy(ProxyType pType, string host, int port, string username, string password)
         {
             string proxy = null;
@@ -437,12 +416,10 @@ namespace OpenTween
                 proxy = "";
                 break;
             case ProxyType.Specified:
-                proxy = host + (port > 0 ? ":" + port.ToString() : "");
+                proxy = host + (port > 0 ? ":" + port : "");
                 break;
             }
             RefreshProxySettings(proxy);
-            // グローバルプロキシ (NULL = IntPtr.Zero) にユーザー名・パスワードをセットできないため無効化
-            //RefreshProxyAccount(username, password);
         }
 #endregion
 
