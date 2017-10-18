@@ -28,6 +28,7 @@ using System.Net.Cache;
 using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using OpenTween.Api;
@@ -42,8 +43,8 @@ namespace OpenTween.Connection
         // SettingCommon.xml の TwitterUrl との互換性のために用意
         public static string RestApiHost
         {
-            get { return RestApiBase.Host; }
-            set { RestApiBase = new Uri($"https://{value}/1.1/"); }
+            get => RestApiBase.Host;
+            set => RestApiBase = new Uri($"https://{value}/1.1/");
         }
 
         public bool IsDisposed { get; private set; } = false;
@@ -52,14 +53,27 @@ namespace OpenTween.Connection
         public string AccessSecret { get; }
 
         internal HttpClient http;
+        internal HttpClient httpUpload;
+        internal HttpClient httpStreaming;
 
         public TwitterApiConnection(string accessToken, string accessSecret)
         {
             this.AccessToken = accessToken;
             this.AccessSecret = accessSecret;
 
-            this.http = InitializeHttpClient(accessToken, accessSecret);
+            this.InitializeHttpClients();
             Networking.WebProxyChanged += this.Networking_WebProxyChanged;
+        }
+
+        private void InitializeHttpClients()
+        {
+            this.http = InitializeHttpClient(this.AccessToken, this.AccessSecret);
+
+            this.httpUpload = InitializeHttpClient(this.AccessToken, this.AccessSecret);
+            this.httpUpload.Timeout = Networking.UploadImageTimeout;
+
+            this.httpStreaming = InitializeHttpClient(this.AccessToken, this.AccessSecret, disableGzip: true);
+            this.httpStreaming.Timeout = Timeout.InfiniteTimeSpan;
         }
 
         public async Task<T> GetAsync<T>(Uri uri, IDictionary<string, string> param, string endpointName)
@@ -130,6 +144,28 @@ namespace OpenTween.Connection
             }
         }
 
+        public async Task<Stream> GetStreamingStreamAsync(Uri uri, IDictionary<string, string> param)
+        {
+            var requestUri = new Uri(RestApiBase, uri);
+
+            if (param != null)
+                requestUri = new Uri(requestUri, "?" + MyCommon.BuildQueryString(param));
+
+            try
+            {
+                return await this.httpStreaming.GetStreamAsync(requestUri)
+                    .ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw TwitterApiException.CreateFromException(ex);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw TwitterApiException.CreateFromException(ex);
+            }
+        }
+
         public async Task<LazyJson<T>> PostLazyAsync<T>(Uri uri, IDictionary<string, string> param)
         {
             var requestUri = new Uri(RestApiBase, uri);
@@ -177,13 +213,13 @@ namespace OpenTween.Connection
             {
                 if (param != null)
                 {
-                    foreach (var kv in param)
-                        postContent.Add(new StringContent(kv.Value), kv.Key);
+                    foreach (var (key, value) in param)
+                        postContent.Add(new StringContent(value), key);
                 }
                 if (media != null)
                 {
-                    foreach (var kv in media)
-                        postContent.Add(new StreamContent(kv.Value.OpenRead()), kv.Key, kv.Value.Name);
+                    foreach (var (key, value) in media)
+                        postContent.Add(new StreamContent(value.OpenRead()), key, value.Name);
                 }
 
                 request.Content = postContent;
@@ -191,7 +227,7 @@ namespace OpenTween.Connection
                 HttpResponseMessage response = null;
                 try
                 {
-                    response = await this.http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                    response = await this.httpUpload.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
                         .ConfigureAwait(false);
 
                     await this.CheckStatusCode(response)
@@ -317,17 +353,16 @@ namespace OpenTween.Connection
             {
                 Networking.WebProxyChanged -= this.Networking_WebProxyChanged;
                 this.http.Dispose();
+                this.httpStreaming.Dispose();
             }
         }
 
         ~TwitterApiConnection()
-        {
-            this.Dispose(false);
-        }
+            => this.Dispose(false);
 
         private void Networking_WebProxyChanged(object sender, EventArgs e)
         {
-            this.http = InitializeHttpClient(this.AccessToken, this.AccessSecret);
+            this.InitializeHttpClients();
         }
 
         public static async Task<Tuple<string, string>> GetRequestTokenAsync()
@@ -407,10 +442,13 @@ namespace OpenTween.Connection
             }
         }
 
-        private static HttpClient InitializeHttpClient(string accessToken, string accessSecret)
+        private static HttpClient InitializeHttpClient(string accessToken, string accessSecret, bool disableGzip = false)
         {
             var innerHandler = Networking.CreateHttpClientHandler();
             innerHandler.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
+
+            if (disableGzip)
+                innerHandler.AutomaticDecompression = DecompressionMethods.None;
 
             var handler = new OAuthHandler(innerHandler,
                 ApplicationSettings.TwitterConsumerKey, ApplicationSettings.TwitterConsumerSecret,

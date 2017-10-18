@@ -403,14 +403,43 @@ namespace OpenTween.Models
             // この時点ではまだ削除されない
             Assert.Equal(1, homeTab.AllCount);
 
-            string soundFile;
-            PostClass[] notifyPosts;
-            bool newMentionOrDm, isDeletePost;
-            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out newMentionOrDm, out isDeletePost);
+            this.tabinfo.SubmitUpdate(out var soundFile, out var notifyPosts,
+                out var newMentionOrDm, out var isDeletePost);
 
             Assert.True(isDeletePost);
             Assert.Equal(0, homeTab.AllCount);
             Assert.False(this.tabinfo.Posts.ContainsKey(100L));
+        }
+
+        [Fact]
+        public void SubmitUpdate_RemoveSubmit_NotOrphaned_Test()
+        {
+            var homeTab = this.tabinfo.GetTabByType<HomeTabModel>();
+            var favTab = this.tabinfo.GetTabByType<FavoritesTabModel>();
+
+            this.tabinfo.AddPost(new PostClass { StatusId = 100L, IsFav = true });
+            this.tabinfo.DistributePosts();
+            this.tabinfo.SubmitUpdate();
+
+            Assert.Equal(1, homeTab.AllCount);
+            Assert.Equal(1, favTab.AllCount);
+
+            // favTab のみ発言を除去 (homeTab には残ったまま)
+            favTab.EnqueueRemovePost(100L, setIsDeleted: false);
+
+            // この時点ではまだ削除されない
+            Assert.Equal(1, homeTab.AllCount);
+            Assert.Equal(1, favTab.AllCount);
+
+            this.tabinfo.SubmitUpdate(out var soundFile, out var notifyPosts,
+                out var newMentionOrDm, out var isDeletePost);
+
+            Assert.True(isDeletePost);
+            Assert.Equal(1, homeTab.AllCount);
+            Assert.Equal(0, favTab.AllCount);
+
+            // homeTab には発言が残っているので Posts からは削除されない
+            Assert.True(this.tabinfo.Posts.ContainsKey(100L));
         }
 
         [Fact]
@@ -439,10 +468,8 @@ namespace OpenTween.Models
 
             this.tabinfo.DistributePosts();
 
-            string soundFile;
-            PostClass[] notifyPosts;
-            bool newMentionOrDm, isDeletePost;
-            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out newMentionOrDm, out isDeletePost);
+            this.tabinfo.SubmitUpdate(out var soundFile, out var notifyPosts,
+                out var newMentionOrDm, out var isDeletePost);
 
             // DM が最も優先度が高いため DM の通知音が再生される
             Assert.Equal("dm.wav", soundFile);
@@ -470,10 +497,8 @@ namespace OpenTween.Models
 
             this.tabinfo.DistributePosts();
 
-            string soundFile;
-            PostClass[] notifyPosts;
-            bool newMentionOrDm, isDeletePost;
-            this.tabinfo.SubmitUpdate(out soundFile, out notifyPosts, out newMentionOrDm, out isDeletePost);
+            this.tabinfo.SubmitUpdate(out var soundFile, out var notifyPosts,
+                out var newMentionOrDm, out var isDeletePost);
 
             // リプライの方が通知音の優先度が高いが、replyTab.SoundFile が空文字列なので次点の Recent の通知音を鳴らす
             Assert.Equal("home.wav", soundFile);

@@ -335,6 +335,15 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
+        ///   認証に失敗しました ({0}) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string BitlyAuthorize_ErrorText {
+            get {
+                return ResourceManager.GetString("BitlyAuthorize_ErrorText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   ブラウザの起動に失敗しました。エラーコード: {0} に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string BrowserStartFailed {
@@ -643,17 +652,19 @@ namespace OpenTween.Properties {
         /// <summary>
         ///   更新履歴
         ///
-        ///==== Ver 1.3.3-dev(2016/xx/xx)
+        ///==== Ver 1.3.9-dev(2017/xx/xx)
         ///
-        ///==== Ver 1.3.2(2016/04/12)
-        /// * NEW: touch.pixiv.net のサムネイル表示に対応 (pixiv.net は既に対応しています)
-        /// * NEW: pic.twitter.com の画像に設定された代替テキストの取得に対応
-        ///  - 代替テキストが設定された画像の場合、発言一覧に含まれる画像 URL が代替テキストに置き換わって表示されます
-        /// * CHG: スクリーンリーダーでの画面の読み上げを改善
-        /// * FIX: 投稿欄の複数行入力が有効かつCtrl+Enterで投稿する設定の状態でハッシュタグの自動付与が行われない不具合を修正 (thx @nt776!)
-        /// * FIX: タブレット端末などでサムネイル画像が1枚のみ表示された状態で2本指スクロールするとエラーが発生する問題を回避
-        /// * FIX: 発言詳細部に表示されるハッシュタグやメンションで「URLをコピー」が機能しない不具合を修正 (thx @ufoprincess!)
-        /// * FIX: 複数のタブで同時に新着ツイート [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
+        ///==== Ver 1.3.8(2017/06/05)
+        /// * NEW: bit.ly の認証方式が変更されました
+        ///  - 短縮URLに bit.ly を使用する場合は、設定画面の「短縮URL」から bit.ly の「認可」ボタンを押して認証情報を入力して下さい
+        /// * CHG: 管理者権限での実行時に表示される警告(v1.3.7で追加)を、UACが無効化された環境では表示しないように変更しました
+        ///  - この変更はUACの無効化を推奨するものではありません
+        /// * FIX: Microsoft DataMarket廃止により翻訳機能が使用できなくなった不具合を修正
+        /// * FIX: DMの送信後に「OK:Delaying?」の警告が表示される不具合を修正 (thx @o_keiichi!)
+        ///
+        ///==== Ver 1.3.7(2017/03/20)
+        /// * NEW: PNG画像のアップロード時にJPEGへの変換による劣化を回避する機能を追加しました (pic.twitter.com のみ)
+        ///  - 設定画面の 動作→投稿 [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string ChangeLog {
             get {
@@ -2530,11 +2541,14 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   IDとAPIキーの組み合わせが違います。IDと同時に設定するのはパスワードではなくAPIキーです。ご確認ください。 に類似しているローカライズされた文字列を検索します。
+        ///   {0} での設定の書き込みに失敗しました。
+        ///
+        ///既存の設定ファイルは {1} にコピーされます。
+        ///（次回起動時は {1} の設定ファイルが優先されます） に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string SettingSave_ClickText1 {
+        internal static string SettingPath_Relocation {
             get {
-                return ResourceManager.GetString("SettingSave_ClickText1", resourceCulture);
+                return ResourceManager.GetString("SettingPath_Relocation", resourceCulture);
             }
         }
         
@@ -2671,20 +2685,13 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
-        ///   投稿に失敗しました に類似しているローカライズされた文字列を検索します。
+        ///   投稿に失敗しました   ---&gt;   [ {0} ]
+        ///&quot;{1}&quot;
+        ///もう一度投稿を試みますか？ に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string StatusUpdateFailed1 {
+        internal static string StatusUpdateFailed {
             get {
-                return ResourceManager.GetString("StatusUpdateFailed1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   もう一度投稿を試みますか？ に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string StatusUpdateFailed2 {
-            get {
-                return ResourceManager.GetString("StatusUpdateFailed2", resourceCulture);
+                return ResourceManager.GetString("StatusUpdateFailed", resourceCulture);
             }
         }
         
@@ -3185,6 +3192,15 @@ namespace OpenTween.Properties {
         }
         
         /// <summary>
+        ///   Bitlyを使用するには設定画面で認証情報を入力する必要があります に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string UrlConvert_BitlyAuthRequired {
+            get {
+                return ResourceManager.GetString("UrlConvert_BitlyAuthRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   適用 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string UserInfoButtonEdit_ClickText1 {
@@ -3262,6 +3278,19 @@ namespace OpenTween.Properties {
         internal static string VimeoInfoText6 {
             get {
                 return ResourceManager.GetString("VimeoInfoText6", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   {0}を管理者権限で実行する事は推奨されません。
+        ///
+        /// * {0}は管理者権限を必要とするソフトウェアではありません。
+        /// * 管理者権限で実行するとD&amp;Dで画像を投稿する操作が制限されます。
+        /// * {0}の設定ファイルが一般ユーザー権限で編集できなくなります。 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WarnIfRunAsAdministrator_Message {
+            get {
+                return ResourceManager.GetString("WarnIfRunAsAdministrator_Message", resourceCulture);
             }
         }
         

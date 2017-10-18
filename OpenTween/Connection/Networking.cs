@@ -35,6 +35,7 @@ namespace OpenTween.Connection
     public static class Networking
     {
         public static TimeSpan DefaultTimeout { get; set; }
+        public static TimeSpan UploadImageTimeout { get; set; }
 
         /// <summary>
         /// 通信に使用するプロキシの種類
@@ -93,6 +94,7 @@ namespace OpenTween.Connection
         static Networking()
         {
             DefaultTimeout = TimeSpan.FromSeconds(20);
+            UploadImageTimeout = TimeSpan.FromSeconds(60);
             globalHttpClient = CreateHttpClient(new HttpClientHandler());
         }
 
@@ -104,7 +106,6 @@ namespace OpenTween.Connection
             Networking.initialized = true;
 
             ServicePointManager.Expect100Continue = false;
-            WebRequest.DefaultCachePolicy = new RequestCachePolicy(RequestCacheLevel.Default);
         }
 
         public static void SetWebProxy(ProxyType proxyType, string proxyAddress, int proxyPort,

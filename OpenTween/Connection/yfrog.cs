@@ -119,9 +119,7 @@ namespace OpenTween.Connection
         }
 
         public int GetReservedTextLength(int mediaCount)
-        {
-            return this.twitterConfig.ShortUrlLength;
-        }
+            => this.twitterConfig.ShortUrlLength + 1;
 
         public void UpdateTwitterConfiguration(TwitterConfiguration config)
         {
@@ -142,7 +140,7 @@ namespace OpenTween.Connection
                 var handler = twitterApi.CreateOAuthEchoHandler(AuthServiceProvider, OAuthRealm);
 
                 this.http = Networking.CreateHttpClient(handler);
-                this.http.Timeout = TimeSpan.FromMinutes(1);
+                this.http.Timeout = Networking.UploadImageTimeout;
             }
 
             /// <summary>

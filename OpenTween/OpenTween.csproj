@@ -69,6 +69,7 @@
       <DependentUpon>ApiInfoDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Api\ApiLimit.cs" />
+    <Compile Include="Api\BitlyApi.cs" />
     <Compile Include="Api\DataModel\GeoJson.cs" />
     <Compile Include="Api\DataModel\TwitterConfiguration.cs" />
     <Compile Include="Api\DataModel\TwitterEntity.cs" />
@@ -86,6 +87,7 @@
     <Compile Include="Api\DataModel\TwitterUploadMediaResult.cs" />
     <Compile Include="Api\DataModel\TwitterUser.cs" />
     <Compile Include="Api\DataModel\TwitterApiAccessLevel.cs" />
+    <Compile Include="Api\MicrosoftTranslatorApi.cs" />
     <Compile Include="Api\TwitterApi.cs" />
     <Compile Include="Api\TwitterApiException.cs" />
     <Compile Include="Api\TwitterApiStatus.cs" />
@@ -139,6 +141,12 @@
       <DependentUpon>FilterDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="IndexedSortedSet.cs" />
+    <Compile Include="LoginDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LoginDialog.Designer.cs">
+      <DependentUpon>LoginDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="MediaItem.cs" />
     <Compile Include="Models\ComparerMode.cs" />
     <Compile Include="Models\DirectMessagesTabModel.cs" />
@@ -167,6 +175,7 @@
     <Compile Include="SendErrorReportForm.Designer.cs">
       <DependentUpon>SendErrorReportForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Setting\SettingManager.cs" />
     <Compile Include="ShortcutCommand.cs" />
     <Compile Include="Thumbnail\Services\PbsTwimgCom.cs" />
     <Compile Include="TweetDetailsView.cs">
@@ -176,6 +185,7 @@
       <DependentUpon>TweetDetailsView.cs</DependentUpon>
     </Compile>
     <Compile Include="TweetExtractor.cs" />
+    <Compile Include="ValueTuple.cs" />
     <Compile Include="WaitingDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -386,7 +396,6 @@
     <Compile Include="MyLists.Designer.cs">
       <DependentUpon>MyLists.cs</DependentUpon>
     </Compile>
-    <Compile Include="MySpecialPath.cs" />
     <Compile Include="nicoms.cs" />
     <Compile Include="OpenURL.cs">
       <SubType>Form</SubType>
@@ -464,16 +473,10 @@
     <EmbeddedResource Include="FilterDialog.resx">
       <DependentUpon>FilterDialog.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="FilterDialog.zh-CHS.resx">
-      <DependentUpon>FilterDialog.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="HashtagManage.en.resx">
       <DependentUpon>HashtagManage.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="HashtagManage.resx">
-      <DependentUpon>HashtagManage.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="HashtagManage.zh-CHS.resx">
       <DependentUpon>HashtagManage.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="InputDialog.en.resx">
@@ -488,9 +491,6 @@
     <EmbeddedResource Include="ListAvailable.en.resx">
       <DependentUpon>ListAvailable.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ListAvailable.zh-CHS.resx">
-      <DependentUpon>ListAvailable.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="ListManage.en.resx">
       <DependentUpon>ListManage.cs</DependentUpon>
     </EmbeddedResource>
@@ -503,9 +503,6 @@
     <EmbeddedResource Include="AtIdSupplement.resx">
       <DependentUpon>AtIdSupplement.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="AtIdSupplement.zh-CHS.resx">
-      <DependentUpon>AtIdSupplement.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="AppendSettingDialog.en.resx">
       <DependentUpon>AppendSettingDialog.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -514,19 +511,16 @@
       <DependentUpon>AppendSettingDialog.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="AppendSettingDialog.zh-CHS.resx">
-      <DependentUpon>AppendSettingDialog.cs</DependentUpon>
+    <EmbeddedResource Include="LoginDialog.en.resx">
+      <DependentUpon>LoginDialog.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ListManage.zh-CHS.resx">
-      <DependentUpon>ListManage.cs</DependentUpon>
+    <EmbeddedResource Include="LoginDialog.resx">
+      <DependentUpon>LoginDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MediaSelector.en.resx">
       <DependentUpon>MediaSelector.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MediaSelector.resx">
-      <DependentUpon>MediaSelector.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="MediaSelector.zh-CHS.resx">
       <DependentUpon>MediaSelector.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SendErrorReportForm.en.resx">
@@ -542,10 +536,6 @@
     <EmbeddedResource Include="TweetDetailsView.resx">
       <DependentUpon>TweetDetailsView.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="TweetDetailsView.zh-CHS.resx">
-      <DependentUpon>TweetDetailsView.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="WaitingDialog.resx">
       <DependentUpon>WaitingDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -555,16 +545,10 @@
     <EmbeddedResource Include="Setting\Panel\ActionPanel.resx">
       <DependentUpon>ActionPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\ActionPanel.zh-CHS.resx">
-      <DependentUpon>ActionPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\BasedPanel.en.resx">
       <DependentUpon>BasedPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\BasedPanel.resx">
-      <DependentUpon>BasedPanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\BasedPanel.zh-CHS.resx">
       <DependentUpon>BasedPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\ConnectionPanel.en.resx">
@@ -573,16 +557,10 @@
     <EmbeddedResource Include="Setting\Panel\ConnectionPanel.resx">
       <DependentUpon>ConnectionPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\ConnectionPanel.zh-CHS.resx">
-      <DependentUpon>ConnectionPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\CooperatePanel.en.resx">
       <DependentUpon>CooperatePanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\CooperatePanel.resx">
-      <DependentUpon>CooperatePanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\CooperatePanel.zh-CHS.resx">
       <DependentUpon>CooperatePanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\FontPanel.en.resx">
@@ -591,16 +569,10 @@
     <EmbeddedResource Include="Setting\Panel\FontPanel.resx">
       <DependentUpon>FontPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\FontPanel.zh-CHS.resx">
-      <DependentUpon>FontPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\FontPanel2.en.resx">
       <DependentUpon>FontPanel2.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\FontPanel2.resx">
-      <DependentUpon>FontPanel2.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\FontPanel2.zh-CHS.resx">
       <DependentUpon>FontPanel2.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\GetCountPanel.en.resx">
@@ -609,16 +581,10 @@
     <EmbeddedResource Include="Setting\Panel\GetCountPanel.resx">
       <DependentUpon>GetCountPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\GetCountPanel.zh-CHS.resx">
-      <DependentUpon>GetCountPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\GetPeriodPanel.en.resx">
       <DependentUpon>GetPeriodPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\GetPeriodPanel.resx">
-      <DependentUpon>GetPeriodPanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\GetPeriodPanel.zh-CHS.resx">
       <DependentUpon>GetPeriodPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\NotifyPanel.en.resx">
@@ -627,16 +593,10 @@
     <EmbeddedResource Include="Setting\Panel\NotifyPanel.resx">
       <DependentUpon>NotifyPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\NotifyPanel.zh-CHS.resx">
-      <DependentUpon>NotifyPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\PreviewPanel.en.resx">
       <DependentUpon>PreviewPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\PreviewPanel.resx">
-      <DependentUpon>PreviewPanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\PreviewPanel.zh-CHS.resx">
       <DependentUpon>PreviewPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\ProxyPanel.en.resx">
@@ -645,16 +605,10 @@
     <EmbeddedResource Include="Setting\Panel\ProxyPanel.resx">
       <DependentUpon>ProxyPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\ProxyPanel.zh-CHS.resx">
-      <DependentUpon>ProxyPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\ShortUrlPanel.en.resx">
       <DependentUpon>ShortUrlPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\ShortUrlPanel.resx">
-      <DependentUpon>ShortUrlPanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\ShortUrlPanel.zh-CHS.resx">
       <DependentUpon>ShortUrlPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\StartupPanel.en.resx">
@@ -663,16 +617,10 @@
     <EmbeddedResource Include="Setting\Panel\StartupPanel.resx">
       <DependentUpon>StartupPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\StartupPanel.zh-CHS.resx">
-      <DependentUpon>StartupPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\TweetActPanel.en.resx">
       <DependentUpon>TweetActPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\TweetActPanel.resx">
-      <DependentUpon>TweetActPanel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\TweetActPanel.zh-CHS.resx">
       <DependentUpon>TweetActPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\Panel\TweetPrvPanel.en.resx">
@@ -681,16 +629,10 @@
     <EmbeddedResource Include="Setting\Panel\TweetPrvPanel.resx">
       <DependentUpon>TweetPrvPanel.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Setting\Panel\TweetPrvPanel.zh-CHS.resx">
-      <DependentUpon>TweetPrvPanel.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="TabsDialog.en.resx">
       <DependentUpon>TabsDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="TabsDialog.resx">
-      <DependentUpon>TabsDialog.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TabsDialog.zh-CHS.resx">
       <DependentUpon>TabsDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="TweetThumbnail.en.resx">
@@ -705,16 +647,10 @@
     <EmbeddedResource Include="UpdateDialog.resx">
       <DependentUpon>UpdateDialog.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="UpdateDialog.zh-CHS.resx">
-      <DependentUpon>UpdateDialog.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="InputTabName.en.resx">
       <DependentUpon>InputTabName.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="InputTabName.resx">
-      <DependentUpon>InputTabName.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="InputTabName.zh-CHS.resx">
       <DependentUpon>InputTabName.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MyLists.en.resx">
@@ -723,16 +659,10 @@
     <EmbeddedResource Include="MyLists.resx">
       <DependentUpon>MyLists.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="MyLists.zh-CHS.resx">
-      <DependentUpon>MyLists.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="OpenURL.en.resx">
       <DependentUpon>OpenURL.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="OpenURL.resx">
-      <DependentUpon>OpenURL.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="OpenURL.zh-CHS.resx">
       <DependentUpon>OpenURL.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -743,25 +673,16 @@
     <EmbeddedResource Include="Properties\Resources.en.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.zh-CHS.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="SearchWordDialog.en.resx">
       <DependentUpon>SearchWordDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SearchWordDialog.resx">
       <DependentUpon>SearchWordDialog.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="SearchWordDialog.zh-CHS.resx">
-      <DependentUpon>SearchWordDialog.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="UserInfoDialog.en.resx">
       <DependentUpon>UserInfoDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UserInfoDialog.resx">
-      <DependentUpon>UserInfoDialog.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UserInfoDialog.zh-CHS.resx">
       <DependentUpon>UserInfoDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Tween.en.resx">
@@ -772,19 +693,11 @@
       <DependentUpon>Tween.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Tween.zh-CHS.resx">
-      <DependentUpon>Tween.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="TweenAboutBox.en.resx">
       <DependentUpon>TweenAboutBox.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="TweenAboutBox.resx">
       <DependentUpon>TweenAboutBox.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TweenAboutBox.zh-CHS.resx">
-      <DependentUpon>TweenAboutBox.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

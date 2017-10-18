@@ -34,13 +34,6 @@ namespace OpenTween
 {
     public class SettingCommon : SettingBase<SettingCommon>
     {
-        public static SettingCommon Instance { get; internal set; }
-
-        static SettingCommon()
-        {
-            Instance = new SettingCommon();
-        }
-
         #region "Settingクラス基本"
         public static SettingCommon Load()
         {
@@ -60,8 +53,8 @@ namespace OpenTween
         public string Password = "";
         public string EncryptPassword
         {
-            get { return Encrypt(Password); }
-            set { Password = Decrypt(value); }
+            get => Encrypt(Password);
+            set => Password = Decrypt(value);
         }
 
         public string Token = "";
@@ -69,8 +62,8 @@ namespace OpenTween
         public string TokenSecret = "";
         public string EncryptTokenSecret
         {
-            get { return Encrypt(TokenSecret); }
-            set { TokenSecret = Decrypt(value); }
+            get => Encrypt(TokenSecret);
+            set => TokenSecret = Decrypt(value);
         }
 
         private string Encrypt(string password)
@@ -190,6 +183,10 @@ namespace OpenTween
         public bool UseUnreadStyle = true;
         public string DateTimeFormat = "yyyy/MM/dd H:mm:ss";
         public int DefaultTimeOut = 20;
+
+        /// <summary>画像アップロードのタイムアウト設定 (秒)</summary>
+        public int UploadImageTimeout { get; set; } = 60;
+
         public bool RetweetNoConfirm = false;
         public bool LimitBalloon = false;
         public bool TabIconDisp = true;
@@ -199,6 +196,10 @@ namespace OpenTween
         public bool GetFav = true;
         public string BilyUser = "";
         public string BitlyPwd = "";
+
+        /// <summary>Bitly API アクセストークン</summary>
+        public string BitlyAccessToken { get; set; } = "";
+
         public bool ShowGrid = false;
         public bool UseAtIdSupplement = true;
         public bool UseHashSupplement = true;
@@ -242,6 +243,9 @@ namespace OpenTween
         public bool IsUseNotifyGrowl = false;
         public bool ForceIPv4 = false;
         public bool ErrorReportAnonymous = true;
+
+        /// <summary>pic.twitter.com への画像アップロード時に JPEG への変換を回避する</summary>
+        public bool AlphaPNGWorkaround { get; set; } = false;
     }
 
     public class UserAccount
@@ -253,8 +257,8 @@ namespace OpenTween
         public string TokenSecret = "";
         public string EncryptTokenSecret
         {
-            get { return Encrypt(TokenSecret); }
-            set { TokenSecret = Decrypt(value); }
+            get => Encrypt(TokenSecret);
+            set => TokenSecret = Decrypt(value);
         }
         private string Encrypt(string password)
         {

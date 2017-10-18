@@ -97,11 +97,10 @@ namespace OpenTween
 
             ListFilters.Items.Clear();
 
-            var tab = _sts.Tabs[tabName] as FilterTabModel;
-            if (tab == null)
-                return;
+            var tab = _sts.Tabs[tabName];
 
-            ListFilters.Items.AddRange(tab.GetFilters());
+            if (tab is FilterTabModel filterTab)
+                ListFilters.Items.AddRange(filterTab.GetFilters());
 
             if (ListFilters.Items.Count > 0)
                 ListFilters.SelectedIndex = 0;
@@ -151,16 +150,22 @@ namespace OpenTween
             GroupTab.Enabled = true;
             ListFilters.Enabled = true;
             EditFilterGroup.Enabled = false;
-            switch (tab.TabType)
+
+            if (tab.IsDistributableTabType)
             {
-                case MyCommon.TabUsageType.Home:
-                case MyCommon.TabUsageType.DirectMessage:
-                case MyCommon.TabUsageType.Favorites:
-                case MyCommon.TabUsageType.PublicSearch:
-                case MyCommon.TabUsageType.Lists:
-                case MyCommon.TabUsageType.Related:
-                case MyCommon.TabUsageType.UserTimeline:
-                    ButtonNew.Enabled = false;
+                ButtonNew.Enabled = true;
+                if (ListFilters.SelectedIndex > -1)
+                {
+                    ButtonEdit.Enabled = true;
+                    ButtonDelete.Enabled = true;
+                    ButtonRuleUp.Enabled = true;
+                    ButtonRuleDown.Enabled = true;
+                    ButtonRuleCopy.Enabled = true;
+                    ButtonRuleMove.Enabled = true;
+                    buttonRuleToggleEnabled.Enabled = true;
+                }
+                else
+                {
                     ButtonEdit.Enabled = false;
                     ButtonDelete.Enabled = false;
                     ButtonRuleUp.Enabled = false;
@@ -168,31 +173,20 @@ namespace OpenTween
                     ButtonRuleCopy.Enabled = false;
                     ButtonRuleMove.Enabled = false;
                     buttonRuleToggleEnabled.Enabled = false;
-                    break;
-                default:
-                    ButtonNew.Enabled = true;
-                    if (ListFilters.SelectedIndex > -1)
-                    {
-                        ButtonEdit.Enabled = true;
-                        ButtonDelete.Enabled = true;
-                        ButtonRuleUp.Enabled = true;
-                        ButtonRuleDown.Enabled = true;
-                        ButtonRuleCopy.Enabled = true;
-                        ButtonRuleMove.Enabled = true;
-                        buttonRuleToggleEnabled.Enabled = true;
-                    }
-                    else
-                    {
-                        ButtonEdit.Enabled = false;
-                        ButtonDelete.Enabled = false;
-                        ButtonRuleUp.Enabled = false;
-                        ButtonRuleDown.Enabled = false;
-                        ButtonRuleCopy.Enabled = false;
-                        ButtonRuleMove.Enabled = false;
-                        buttonRuleToggleEnabled.Enabled = false;
-                    }
-                    break;
+                }
             }
+            else
+            {
+                ButtonNew.Enabled = false;
+                ButtonEdit.Enabled = false;
+                ButtonDelete.Enabled = false;
+                ButtonRuleUp.Enabled = false;
+                ButtonRuleDown.Enabled = false;
+                ButtonRuleCopy.Enabled = false;
+                ButtonRuleMove.Enabled = false;
+                buttonRuleToggleEnabled.Enabled = false;
+            }
+
             switch (tab.TabType)
             {
                 case MyCommon.TabUsageType.Home:
@@ -604,11 +598,8 @@ namespace OpenTween
 
         private void ButtonOK_Click(object sender, EventArgs e)
         {
-            bool isBlankMatch = false;
-            bool isBlankExclude = false;
-
             //入力チェック
-            if (!CheckMatchRule(out isBlankMatch) || !CheckExcludeRule(out isBlankExclude))
+            if (!CheckMatchRule(out var isBlankMatch) || !CheckExcludeRule(out var isBlankExclude))
             {
                 return;
             }
@@ -1093,12 +1084,13 @@ namespace OpenTween
         {
             if (ListTabs.SelectedIndex > -1 && !string.IsNullOrEmpty(ListTabs.SelectedItem.ToString()))
             {
-                string tb = ListTabs.SelectedItem.ToString();
                 int idx = ListTabs.SelectedIndex;
-                if (((TweenMain)this.Owner).TabRename(ref tb))
+
+                var origTabName = (string)this.ListTabs.SelectedItem;
+                if (((TweenMain)this.Owner).TabRename(origTabName, out var newTabName))
                 {
                     ListTabs.Items.RemoveAt(idx);
-                    ListTabs.Items.Insert(idx, tb);
+                    ListTabs.Items.Insert(idx, newTabName);
                     ListTabs.SelectedIndex = idx;
                 }
             }

@@ -54,6 +54,45 @@ namespace OpenTween
             }
         }
 
+        public static async Task NotRaisesAsync<T>(Action<EventHandler<T>> attach, Action<EventHandler<T>> detach, Func<Task> testCode)
+            where T : EventArgs
+        {
+            T raisedEvent = null;
+            EventHandler<T> handler = (s, e) => raisedEvent = e;
+
+            try
+            {
+                attach(handler);
+                await testCode().ConfigureAwait(false);
+
+                if (raisedEvent != null)
+                    throw new Xunit.Sdk.RaisesException(typeof(void), raisedEvent.GetType());
+            }
+            finally
+            {
+                detach(handler);
+            }
+        }
+
+        public static void NotPropertyChanged(INotifyPropertyChanged @object, string propertyName, Action testCode)
+        {
+            PropertyChangedEventHandler handler = (s, e) =>
+            {
+                if (s == @object && e.PropertyName == propertyName)
+                    throw new Xunit.Sdk.PropertyChangedException(propertyName);
+            };
+
+            try
+            {
+                @object.PropertyChanged += handler;
+                testCode();
+            }
+            finally
+            {
+                @object.PropertyChanged -= handler;
+            }
+        }
+
         public static MemoryImage CreateDummyImage()
         {
             using (var bitmap = new Bitmap(100, 100))
@@ -88,6 +127,36 @@ namespace OpenTween
                 return;
 
             TestUtils.FireEvent(control, "Validated");
+        }
+    }
+}
+
+namespace OpenTween.Setting
+{
+    public class SettingManagerTest
+    {
+        public static SettingCommon Common
+        {
+            get { return SettingManager.Common; }
+            set { SettingManager.Common = value; }
+        }
+
+        public static SettingLocal Local
+        {
+            get { return SettingManager.Local; }
+            set { SettingManager.Local = value; }
+        }
+
+        public static SettingTabs Tabs
+        {
+            get { return SettingManager.Tabs; }
+            set { SettingManager.Tabs = value; }
+        }
+
+        public static SettingAtIdList AtIdList
+        {
+            get { return SettingManager.AtIdList; }
+            set { SettingManager.AtIdList = value; }
         }
     }
 }

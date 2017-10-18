@@ -36,6 +36,8 @@ using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Globalization;
+using OpenTween.Setting;
+using System.Threading.Tasks;
 
 namespace OpenTween
 {
@@ -94,14 +96,31 @@ namespace OpenTween
             _curTab = TabEventType.SelectedTab;
             CreateFilterdEventSource();
             EventList.EndUpdate();
-            this.TopMost = SettingCommon.Instance.AlwaysTop;
+            this.TopMost = SettingManager.Common.AlwaysTop;
         }
 
         private async void EventList_DoubleClick(object sender, EventArgs e)
+            => await this.OpenEventStatusOrUser();
+
+        private async void EventList_KeyDown(object sender, KeyEventArgs e)
         {
-            if (EventList.SelectedIndices.Count != 0 && _filterdEventSource[EventList.SelectedIndices[0]] != null)
+            if (e.KeyData == Keys.Enter)
+                await this.OpenEventStatusOrUser();
+        }
+
+        private async Task OpenEventStatusOrUser()
+        {
+            if (this.EventList.SelectedIndices.Count == 0)
+                return;
+
+            var tweenMain = (TweenMain)this.Owner;
+            var selectedEvent = this._filterdEventSource[this.EventList.SelectedIndices[0]];
+            if (selectedEvent != null)
             {
-                await ((TweenMain)this.Owner).OpenUriInBrowserAsync("https://twitter.com/" + _filterdEventSource[EventList.SelectedIndices[0]].Username);
+                if (selectedEvent.Id != 0)
+                    await tweenMain.OpenRelatedTab(selectedEvent.Id);
+                else
+                    await tweenMain.OpenUriAsync(new Uri("https://twitter.com/" + selectedEvent.Username));
             }
         }
 
@@ -268,7 +287,7 @@ namespace OpenTween
                     }
                 }
             }
-            this.TopMost = SettingCommon.Instance.AlwaysTop;
+            this.TopMost = SettingManager.Common.AlwaysTop;
         }
 
         private void SaveEventLog(List<Twitter.FormattedEvent> source, StreamWriter sw)

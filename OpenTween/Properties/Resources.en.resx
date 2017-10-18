@@ -666,12 +666,6 @@
   <data name="ShowUserInfo1" xml:space="preserve">
     <value>User Information analyze failed.</value>
   </data>
-  <data name="StatusUpdateFailed1" xml:space="preserve">
-    <value>Failed to update status.</value>
-  </data>
-  <data name="StatusUpdateFailed2" xml:space="preserve">
-    <value>Do you retry to update status?</value>
-  </data>
   <data name="PubSearchPeriod_ValidatingText1" xml:space="preserve">
     <value>Fetching interval must a value in 0 or 30 to 6000.</value>
   </data>
@@ -1015,9 +1009,6 @@ Do you want to upload the {1} selected media file(s)?</value>
   <data name="SaveLogMenuItem_ClickText5" xml:space="preserve">
     <value>Save events?{0}  [Yes]    :Save events in this tab{0}  [No]  :Save all events{0}[Cancel]:Cancel{0}(Save as Tab separated text(TSV))</value>
   </data>
-  <data name="SettingSave_ClickText1" xml:space="preserve">
-    <value>Failed to authorization. Please confirm api key.</value>
-  </data>
   <data name="TranslateDefaultLanguage" xml:space="preserve">
     <value>en</value>
   </data>
@@ -1142,5 +1133,29 @@ Available service: {1}</value>
   </data>
   <data name="StatusText_AccessibleDescription" xml:space="preserve">
     <value>{0} characters remaining</value>
+  </data>
+  <data name="StatusUpdateFailed" xml:space="preserve">
+    <value>Failed to update status.   ---&gt;   [ {0} ]
+"{1}"
+Do you retry to update status?</value>
+  </data>
+  <data name="SettingPath_Relocation" xml:space="preserve">
+    <value>Failed to write settings to {0}.
+
+Existing setting files are copied to {1}.
+(The setting files in {1} will be used at next startup)</value>
+  </data>
+  <data name="WarnIfRunAsAdministrator_Message" xml:space="preserve">
+    <value>It is not recommended to run {0} as administrator.
+
+ * {0} does not require administrator privileges.
+ * If you run as administrator, operations to post images with D&amp;D will be restricted.
+ * After running, the setting files of {0} will be able to modify only from administrator.</value>
+  </data>
+  <data name="BitlyAuthorize_ErrorText" xml:space="preserve">
+    <value>Failed to authorize. ({0})</value>
+  </data>
+  <data name="UrlConvert_BitlyAuthRequired" xml:space="preserve">
+    <value>To use Bitly, you must perform the Bitly authentication in settings dialog.</value>
   </data>
 </root>

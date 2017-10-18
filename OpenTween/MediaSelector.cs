@@ -36,13 +36,13 @@ namespace OpenTween
 {
     public partial class MediaSelector : UserControl
     {
-        public event EventHandler BeginSelecting;
-        public event EventHandler EndSelecting;
+        public event EventHandler<EventArgs> BeginSelecting;
+        public event EventHandler<EventArgs> EndSelecting;
 
-        public event EventHandler FilePickDialogOpening;
-        public event EventHandler FilePickDialogClosed;
+        public event EventHandler<EventArgs> FilePickDialogOpening;
+        public event EventHandler<EventArgs> FilePickDialogClosed;
 
-        public event EventHandler SelectedServiceChanged;
+        public event EventHandler<EventArgs> SelectedServiceChanged;
 
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -81,8 +81,8 @@ namespace OpenTween
                 if (string.IsNullOrEmpty(serviceName))
                     return null;
 
-                IMediaUploadService service;
-                return this.pictureService.TryGetValue(serviceName, out service) ? service : null;
+                return this.pictureService.TryGetValue(serviceName, out var service)
+                    ? service : null;
             }
         }
 
@@ -91,8 +91,7 @@ namespace OpenTween
         /// </summary>
         public IMediaUploadService GetService(string serviceName)
         {
-            IMediaUploadService service;
-            this.pictureService.TryGetValue(serviceName, out service);
+            this.pictureService.TryGetValue(serviceName, out var service);
             return service;
         }
 

@@ -26,6 +26,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using OpenTween.Api.DataModel;
 using OpenTween.Models;
+using OpenTween.Setting;
 using Xunit;
 using Xunit.Extensions;
 
@@ -97,9 +98,8 @@ namespace OpenTween
         {
             var sourceHtml = "<a href=\"http://twitter.com\" rel=\"nofollow\">Twitter Web Client</a>";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("Twitter Web Client", result.Item1);
-            Assert.Equal(new Uri("http://twitter.com/"), result.Item2);
+            var expected = ("Twitter Web Client", new Uri("http://twitter.com/"));
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -107,9 +107,8 @@ namespace OpenTween
         {
             var sourceHtml = "web";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("web", result.Item1);
-            Assert.Equal(null, result.Item2);
+            var expected = ("web", (Uri)null);
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -118,9 +117,8 @@ namespace OpenTween
             // 参照: https://twitter.com/kim_upsilon/status/477796052049752064
             var sourceHtml = "<a href=\"erased_45416\" rel=\"nofollow\">erased_45416</a>";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("erased_45416", result.Item1);
-            Assert.Equal(new Uri("https://twitter.com/erased_45416"), result.Item2);
+            var expected = ("erased_45416", new Uri("https://twitter.com/erased_45416"));
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -129,9 +127,8 @@ namespace OpenTween
             // 参照: https://twitter.com/kim_upsilon/status/595156014032244738
             var sourceHtml = "";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("", result.Item1);
-            Assert.Equal(null, result.Item2);
+            var expected = ("", (Uri)null);
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -139,9 +136,8 @@ namespace OpenTween
         {
             string sourceHtml = null;
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("", result.Item1);
-            Assert.Equal(null, result.Item2);
+            var expected = ("", (Uri)null);
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -149,9 +145,8 @@ namespace OpenTween
         {
             string sourceHtml = "<a href=\"http://example.com/?aaa=123&amp;bbb=456\" rel=\"nofollow\">&lt;&lt;hogehoge&gt;&gt;</a>";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("<<hogehoge>>", result.Item1);
-            Assert.Equal(new Uri("http://example.com/?aaa=123&bbb=456"), result.Item2);
+            var expected = ("<<hogehoge>>", new Uri("http://example.com/?aaa=123&bbb=456"));
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -159,9 +154,8 @@ namespace OpenTween
         {
             string sourceHtml = "&lt;&lt;hogehoge&gt;&gt;";
 
-            var result = Twitter.ParseSource(sourceHtml);
-            Assert.Equal("<<hogehoge>>", result.Item1);
-            Assert.Equal(null, result.Item2);
+            var expected = ("<<hogehoge>>", (Uri)null);
+            Assert.Equal(expected, Twitter.ParseSource(sourceHtml));
         }
 
         [Fact]
@@ -208,21 +202,21 @@ namespace OpenTween
         [Fact]
         public void GetApiResultCount_DefaultTest()
         {
-            var oldInstance = SettingCommon.Instance;
-            SettingCommon.Instance = new SettingCommon();
+            var oldInstance = SettingManagerTest.Common;
+            SettingManagerTest.Common = new SettingCommon();
 
-            var timeline = SettingCommon.Instance.CountApi;
-            var reply = SettingCommon.Instance.CountApiReply;
+            var timeline = SettingManager.Common.CountApi;
+            var reply = SettingManager.Common.CountApiReply;
             var dm = 20;  // DMは固定値
-            var more = SettingCommon.Instance.MoreCountApi;
-            var startup = SettingCommon.Instance.FirstCountApi;
-            var favorite = SettingCommon.Instance.FavoritesCountApi;
-            var list = SettingCommon.Instance.ListCountApi;
-            var search = SettingCommon.Instance.SearchCountApi;
-            var usertl = SettingCommon.Instance.UserTimelineCountApi;
+            var more = SettingManager.Common.MoreCountApi;
+            var startup = SettingManager.Common.FirstCountApi;
+            var favorite = SettingManager.Common.FavoritesCountApi;
+            var list = SettingManager.Common.ListCountApi;
+            var search = SettingManager.Common.SearchCountApi;
+            var usertl = SettingManager.Common.UserTimelineCountApi;
 
             // デフォルト値チェック
-            Assert.Equal(false, SettingCommon.Instance.UseAdditionalCount);
+            Assert.Equal(false, SettingManager.Common.UseAdditionalCount);
             Assert.Equal(60, timeline);
             Assert.Equal(40, reply);
             Assert.Equal(200, more);
@@ -246,26 +240,26 @@ namespace OpenTween
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.PublicSearch, false, false));
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, false, false));
 
-            SettingCommon.Instance = oldInstance;
+            SettingManagerTest.Common = oldInstance;
         }
 
         [Fact]
         public void GetApiResultCount_AdditionalCountTest()
         {
-            var oldInstance = SettingCommon.Instance;
-            SettingCommon.Instance = new SettingCommon();
+            var oldInstance = SettingManagerTest.Common;
+            SettingManagerTest.Common = new SettingCommon();
 
-            var timeline = SettingCommon.Instance.CountApi;
-            var reply = SettingCommon.Instance.CountApiReply;
+            var timeline = SettingManager.Common.CountApi;
+            var reply = SettingManager.Common.CountApiReply;
             var dm = 20;  // DMは固定値
-            var more = SettingCommon.Instance.MoreCountApi;
-            var startup = SettingCommon.Instance.FirstCountApi;
-            var favorite = SettingCommon.Instance.FavoritesCountApi;
-            var list = SettingCommon.Instance.ListCountApi;
-            var search = SettingCommon.Instance.SearchCountApi;
-            var usertl = SettingCommon.Instance.UserTimelineCountApi;
+            var more = SettingManager.Common.MoreCountApi;
+            var startup = SettingManager.Common.FirstCountApi;
+            var favorite = SettingManager.Common.FavoritesCountApi;
+            var list = SettingManager.Common.ListCountApi;
+            var search = SettingManager.Common.SearchCountApi;
+            var usertl = SettingManager.Common.UserTimelineCountApi;
 
-            SettingCommon.Instance.UseAdditionalCount = true;
+            SettingManager.Common.UseAdditionalCount = true;
 
             // Timeline
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.Timeline, false, false));
@@ -286,7 +280,7 @@ namespace OpenTween
             Assert.Equal(favorite, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.Favorites, true, false));
             Assert.Equal(favorite, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.Favorites, false, true));
 
-            SettingCommon.Instance.FavoritesCountApi = 0;
+            SettingManager.Common.FavoritesCountApi = 0;
 
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.Favorites, false, false));
             Assert.Equal(more, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.Favorites, true, false));
@@ -297,7 +291,7 @@ namespace OpenTween
             Assert.Equal(list, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.List, true, false));
             Assert.Equal(list, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.List, false, true));
 
-            SettingCommon.Instance.ListCountApi = 0;
+            SettingManager.Common.ListCountApi = 0;
 
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.List, false, false));
             Assert.Equal(more, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.List, true, false));
@@ -308,7 +302,7 @@ namespace OpenTween
             Assert.Equal(search, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.PublicSearch, true, false));
             Assert.Equal(search, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.PublicSearch, false, true));
 
-            SettingCommon.Instance.SearchCountApi = 0;
+            SettingManager.Common.SearchCountApi = 0;
 
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.PublicSearch, false, false));
             Assert.Equal(search, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.PublicSearch, true, false));  //MoreCountApiの値がPublicSearchの最大値に制限される
@@ -319,13 +313,13 @@ namespace OpenTween
             Assert.Equal(usertl, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, true, false));
             Assert.Equal(usertl, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, false, true));
 
-            SettingCommon.Instance.UserTimelineCountApi = 0;
+            SettingManager.Common.UserTimelineCountApi = 0;
 
             Assert.Equal(timeline, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, false, false));
             Assert.Equal(more, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, true, false));
             Assert.Equal(startup, Twitter.GetApiResultCount(MyCommon.WORKERTYPE.UserTimeline, false, true));
 
-            SettingCommon.Instance = oldInstance;
+            SettingManagerTest.Common = oldInstance;
         }
 
         [Fact]

@@ -33,6 +33,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using OpenTween.Setting;
 
 namespace OpenTween.Models
 {
@@ -96,29 +97,32 @@ namespace OpenTween.Models
 
         public virtual void AddPostQueue(PostClass post)
         {
+            if (!this.Posts.ContainsKey(post.StatusId))
+                throw new ArgumentException("Specified post not exists in storage", nameof(post));
+
             this.addQueue.Enqueue(new TemporaryId(post.StatusId, post.IsRead));
         }
 
         //無条件に追加
-        internal void AddPostImmediately(long statusId, bool read)
+        internal bool AddPostImmediately(long statusId, bool read)
         {
-            if (this._ids.Contains(statusId)) return;
-
-            this._ids.Add(statusId);
+            if (!this._ids.Add(statusId))
+                return false;
 
             if (!read)
                 this.unreadIds.Add(statusId);
+
+            return true;
         }
 
-        public IList<long> AddSubmit()
+        public IReadOnlyList<long> AddSubmit()
         {
             var addedIds = new List<long>();
 
-            TemporaryId tId;
-            while (this.addQueue.TryDequeue(out tId))
+            while (this.addQueue.TryDequeue(out var tId))
             {
-                this.AddPostImmediately(tId.StatusId, tId.Read);
-                addedIds.Add(tId.StatusId);
+                if (this.AddPostImmediately(tId.StatusId, tId.Read))
+                    addedIds.Add(tId.StatusId);
             }
 
             return addedIds;
@@ -142,8 +146,7 @@ namespace OpenTween.Models
         {
             var removedIds = new List<long>();
 
-            long statusId;
-            while (this.removeQueue.TryDequeue(out statusId))
+            while (this.removeQueue.TryDequeue(out var statusId))
             {
                 if (this.RemovePostImmediately(statusId))
                     removedIds.Add(statusId);
@@ -211,9 +214,8 @@ namespace OpenTween.Models
 
                 comparison = (x, y) =>
                 {
-                    PostClass xPost, yPost;
-                    this.Posts.TryGetValue(x, out xPost);
-                    this.Posts.TryGetValue(y, out yPost);
+                    this.Posts.TryGetValue(x, out var xPost);
+                    this.Posts.TryGetValue(y, out var yPost);
 
                     var compare = sign * postComparison(xPost, yPost);
                     if (compare != 0)
@@ -238,7 +240,7 @@ namespace OpenTween.Models
         {
             get
             {
-                if (!this.UnreadManage || !SettingCommon.Instance.UnreadManage)
+                if (!this.UnreadManage || !SettingManager.Common.UnreadManage)
                     return -1L;
 
                 if (this.unreadIds.Count == 0)
@@ -271,7 +273,7 @@ namespace OpenTween.Models
         {
             get
             {
-                if (!this.UnreadManage || !SettingCommon.Instance.UnreadManage)
+                if (!this.UnreadManage || !SettingManager.Common.UnreadManage)
                     return 0;
 
                 return this.unreadIds.Count;
@@ -317,9 +319,8 @@ namespace OpenTween.Models
         {
             get
             {
-                PostClass post;
-                if (!this.Posts.TryGetValue(this.GetStatusIdAt(index), out post))
-                    throw new ArgumentException("Post not exists", nameof(index));
+                if (!this.Posts.TryGetValue(this.GetStatusIdAt(index), out var post))
+                    throw new ArgumentOutOfRangeException(nameof(index), "Post not exists");
 
                 return post;
             }
@@ -329,6 +330,13 @@ namespace OpenTween.Models
         {
             get
             {
+                if (startIndex < 0)
+                    throw new ArgumentOutOfRangeException(nameof(startIndex));
+                if (endIndex >= this.AllCount)
+                    throw new ArgumentOutOfRangeException(nameof(endIndex));
+                if (startIndex > endIndex)
+                    throw new ArgumentException($"{nameof(startIndex)} must be equal to or less than {nameof(endIndex)}.", nameof(startIndex));
+
                 var length = endIndex - startIndex + 1;
                 var posts = new PostClass[length];
 
@@ -385,33 +393,16 @@ namespace OpenTween.Models
             if (this.AllCount == 0)
                 yield break;
 
-            var searchIndices = Enumerable.Empty<int>();
+            IEnumerable<int> searchIndices;
 
             if (!reverse)
-            {
-                // startindex ...末尾
-                if (startIndex != this.AllCount - 1)
-                    searchIndices = MyCommon.CountUp(startIndex, this.AllCount - 1);
-
-                // 先頭 ... (startIndex - 1)
-                if (startIndex != 0)
-                    searchIndices = searchIndices.Concat(MyCommon.CountUp(0, startIndex - 1));
-            }
+                searchIndices = MyCommon.CircularCountUp(this.AllCount, startIndex);
             else
-            {
-                // startIndex ... 先頭
-                if (startIndex != 0)
-                    searchIndices = MyCommon.CountDown(startIndex, 0);
-
-                // 末尾 ... (startIndex - 1)
-                if (startIndex != this.AllCount - 1)
-                    searchIndices = searchIndices.Concat(MyCommon.CountDown(this.AllCount - 1, startIndex - 1));
-            }
+                searchIndices = MyCommon.CircularCountDown(this.AllCount, startIndex);
 
             foreach (var index in searchIndices)
             {
-                PostClass post;
-                if (!this.Posts.TryGetValue(this.GetStatusIdAt(index), out post))
+                if (!this.Posts.TryGetValue(this.GetStatusIdAt(index), out var post))
                     continue;
 
                 if (stringComparer(post.Nickname) || stringComparer(post.TextFromApi) || stringComparer(post.ScreenName))

@@ -50,6 +50,8 @@ using OpenTween.Api;
 using OpenTween.Api.DataModel;
 using OpenTween.Connection;
 using OpenTween.Models;
+using System.Drawing.Imaging;
+using OpenTween.Setting;
 
 namespace OpenTween
 {
@@ -231,7 +233,7 @@ namespace OpenTween
             this.ResetApiStatus();
             this.Api.Initialize(token, tokenSecret, userId, username);
             _uname = username.ToLowerInvariant();
-            if (SettingCommon.Instance.UserstreamStartup) this.ReconnectUserStream();
+            if (SettingManager.Common.UserstreamStartup) this.ReconnectUserStream();
         }
 
         public string PreProcessUrl(string orgData)
@@ -278,8 +280,7 @@ namespace OpenTween
         {
             this.CheckAccountState();
 
-            if (mediaIds == null &&
-                Twitter.DMSendTextRegex.IsMatch(postStr))
+            if (Twitter.DMSendTextRegex.IsMatch(postStr))
             {
                 await this.SendDirectMessage(postStr)
                     .ConfigureAwait(false);
@@ -300,17 +301,77 @@ namespace OpenTween
             this.previousStatusId = status.Id;
         }
 
-        public async Task<long> UploadMedia(IMediaItem item)
+        public Task<long> UploadMedia(IMediaItem item)
+            => this.UploadMedia(item, SettingManager.Common.AlphaPNGWorkaround);
+
+        public async Task<long> UploadMedia(IMediaItem item, bool alphaPNGWorkaround)
         {
             this.CheckAccountState();
 
-            var response = await this.Api.MediaUpload(item)
-                .ConfigureAwait(false);
+            LazyJson<TwitterUploadMediaResult> response;
+
+            using (var origImage = item.CreateImage())
+            {
+                if (alphaPNGWorkaround && this.AddAlphaChannelIfNeeded(origImage.Image, out var newImage))
+                {
+                    using (var newMediaItem = new MemoryImageMediaItem(newImage))
+                    {
+                        response = await this.Api.MediaUpload(newMediaItem)
+                            .ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    response = await this.Api.MediaUpload(item)
+                        .ConfigureAwait(false);
+                }
+            }
 
             var media = await response.LoadJsonAsync()
                 .ConfigureAwait(false);
 
             return media.MediaId;
+        }
+
+        /// <summary>
+        /// pic.twitter.com アップロード時に JPEG への変換を回避するための加工を行う
+        /// </summary>
+        /// <remarks>
+        /// pic.twitter.com へのアップロード時に、アルファチャンネルを持たない PNG 画像が
+        /// JPEG 形式に変換され画質が低下する問題を回避します。
+        /// PNG 以外の画像や、すでにアルファチャンネルを持つ PNG 画像に対しては何もしません。
+        /// </remarks>
+        /// <returns>加工が行われた場合は true、そうでない場合は false</returns>
+        private bool AddAlphaChannelIfNeeded(Image origImage, out MemoryImage newImage)
+        {
+            newImage = null;
+
+            // PNG 画像以外に対しては何もしない
+            if (origImage.RawFormat.Guid != ImageFormat.Png.Guid)
+                return false;
+
+            using (var bitmap = new Bitmap(origImage))
+            {
+                // アルファ値が 255 以外のピクセルが含まれていた場合は何もしない
+                foreach (var x in Enumerable.Range(0, bitmap.Width))
+                {
+                    foreach (var y in Enumerable.Range(0, bitmap.Height))
+                    {
+                        if (bitmap.GetPixel(x, y).A != 255)
+                            return false;
+                    }
+                }
+
+                // 左上の 1px だけアルファ値を 254 にする
+                var pixel = bitmap.GetPixel(0, 0);
+                var newPixel = Color.FromArgb(pixel.A - 1, pixel.R, pixel.G, pixel.B);
+                bitmap.SetPixel(0, 0, newPixel);
+
+                // MemoryImage 作成時に画像はコピーされるため、この後 bitmap は破棄しても問題ない
+                newImage = MemoryImage.CopyFromImage(bitmap);
+
+                return true;
+            }
         }
 
         public async Task SendDirectMessage(string postStr)
@@ -334,16 +395,11 @@ namespace OpenTween
             this.CheckAccountState();
 
             //データ部分の生成
-            var target = id;
             var post = TabInformations.GetInstance()[id];
             if (post == null)
-            {
                 throw new WebApiException("Err:Target isn't found.");
-            }
-            if (TabInformations.GetInstance()[id].RetweetedId != null)
-            {
-                target = TabInformations.GetInstance()[id].RetweetedId.Value; //再RTの場合は元発言をRT
-            }
+
+            var target = post.RetweetedId ?? id;  //再RTの場合は元発言をRT
 
             var response = await this.Api.StatusesRetweet(target)
                 .ConfigureAwait(false);
@@ -351,20 +407,20 @@ namespace OpenTween
             var status = await response.LoadJsonAsync()
                 .ConfigureAwait(false);
 
-            //ReTweetしたものをTLに追加
-            post = CreatePostsFromStatusData(status);
-            if (post == null)
-                throw new WebApiException("Invalid Json!");
-
             //二重取得回避
             lock (LockObj)
             {
-                if (TabInformations.GetInstance().ContainsKey(post.StatusId))
+                if (TabInformations.GetInstance().ContainsKey(status.Id))
                     return;
             }
+
             //Retweet判定
-            if (post.RetweetedId == null)
+            if (status.RetweetedStatus == null)
                 throw new WebApiException("Invalid Json!");
+
+            //ReTweetしたものをTLに追加
+            post = CreatePostsFromStatusData(status);
+            
             //ユーザー情報
             post.IsMe = true;
 
@@ -486,42 +542,42 @@ namespace OpenTween
                 return 20;
             }
 
-            if (SettingCommon.Instance.UseAdditionalCount)
+            if (SettingManager.Common.UseAdditionalCount)
             {
                 switch (type)
                 {
                     case MyCommon.WORKERTYPE.Favorites:
-                        if (SettingCommon.Instance.FavoritesCountApi != 0)
-                            return SettingCommon.Instance.FavoritesCountApi;
+                        if (SettingManager.Common.FavoritesCountApi != 0)
+                            return SettingManager.Common.FavoritesCountApi;
                         break;
                     case MyCommon.WORKERTYPE.List:
-                        if (SettingCommon.Instance.ListCountApi != 0)
-                            return SettingCommon.Instance.ListCountApi;
+                        if (SettingManager.Common.ListCountApi != 0)
+                            return SettingManager.Common.ListCountApi;
                         break;
                     case MyCommon.WORKERTYPE.PublicSearch:
-                        if (SettingCommon.Instance.SearchCountApi != 0)
-                            return SettingCommon.Instance.SearchCountApi;
+                        if (SettingManager.Common.SearchCountApi != 0)
+                            return SettingManager.Common.SearchCountApi;
                         break;
                     case MyCommon.WORKERTYPE.UserTimeline:
-                        if (SettingCommon.Instance.UserTimelineCountApi != 0)
-                            return SettingCommon.Instance.UserTimelineCountApi;
+                        if (SettingManager.Common.UserTimelineCountApi != 0)
+                            return SettingManager.Common.UserTimelineCountApi;
                         break;
                 }
-                if (more && SettingCommon.Instance.MoreCountApi != 0)
+                if (more && SettingManager.Common.MoreCountApi != 0)
                 {
-                    return Math.Min(SettingCommon.Instance.MoreCountApi, GetMaxApiResultCount(type));
+                    return Math.Min(SettingManager.Common.MoreCountApi, GetMaxApiResultCount(type));
                 }
-                if (startup && SettingCommon.Instance.FirstCountApi != 0 && type != MyCommon.WORKERTYPE.Reply)
+                if (startup && SettingManager.Common.FirstCountApi != 0 && type != MyCommon.WORKERTYPE.Reply)
                 {
-                    return Math.Min(SettingCommon.Instance.FirstCountApi, GetMaxApiResultCount(type));
+                    return Math.Min(SettingManager.Common.FirstCountApi, GetMaxApiResultCount(type));
                 }
             }
 
             // 上記に当てはまらない場合の共通処理
-            var count = SettingCommon.Instance.CountApi;
+            var count = SettingManager.Common.CountApi;
 
             if (type == MyCommon.WORKERTYPE.Reply)
-                count = SettingCommon.Instance.CountApiReply;
+                count = SettingManager.Common.CountApiReply;
 
             return Math.Min(count, GetMaxApiResultCount(type));
         }
@@ -615,8 +671,6 @@ namespace OpenTween
                 .ConfigureAwait(false);
 
             var item = CreatePostsFromStatusData(status);
-            if (item == null)
-                throw new WebApiException("Err:Can't create post");
 
             item.IsRead = read;
             if (item.IsMe && !read && _readOwnPost) item.IsRead = true;
@@ -657,7 +711,7 @@ namespace OpenTween
                 //Id
                 post.RetweetedId = retweeted.Id;
                 //本文
-                post.TextFromApi = retweeted.Text;
+                post.TextFromApi = retweeted.FullText;
                 entities = retweeted.MergedEntities;
                 sourceHtml = retweeted.Source;
                 //Reply先
@@ -713,7 +767,7 @@ namespace OpenTween
             {
                 post.CreatedAt = MyCommon.DateTimeParse(status.CreatedAt);
                 //本文
-                post.TextFromApi = status.Text;
+                post.TextFromApi = status.FullText;
                 entities = status.MergedEntities;
                 sourceHtml = status.Source;
                 post.InReplyToStatusId = status.InReplyToStatusId;
@@ -763,6 +817,14 @@ namespace OpenTween
             post.AccessibleText = WebUtility.HtmlDecode(post.AccessibleText);
             post.AccessibleText = post.AccessibleText.Replace("<3", "\u2661");
 
+            post.QuoteStatusIds = GetQuoteTweetStatusIds(entities)
+                .Where(x => x != post.StatusId && x != post.RetweetedId)
+                .Distinct().ToArray();
+
+            post.ExpandedUrls = entities.OfType<TwitterEntityUrl>()
+                .Select(x => new PostClass.ExpandedUrlInfo(x.Url, x.ExpandedUrl))
+                .ToArray();
+
             // メモリ使用量削減 (同一のテキストであれば同一の string インスタンスを参照させる)
             if (post.Text == post.TextFromApi)
                 post.Text = post.TextFromApi;
@@ -775,20 +837,12 @@ namespace OpenTween
             post.ImageUrl = string.Intern(post.ImageUrl);
             post.RetweetedBy = post.RetweetedBy != null ? string.Intern(post.RetweetedBy) : null;
 
-            post.QuoteStatusIds = GetQuoteTweetStatusIds(entities)
-                .Where(x => x != post.StatusId && x != post.RetweetedId)
-                .Distinct().ToArray();
-
-            post.ExpandedUrls = entities.OfType<TwitterEntityUrl>()
-                .Select(x => new PostClass.ExpandedUrlInfo(x.Url, x.ExpandedUrl))
-                .ToArray();
-
             //Source整形
-            var source = ParseSource(sourceHtml);
-            post.Source = string.Intern(source.Item1);
-            post.SourceUri = source.Item2;
+            var (sourceText, sourceUri) = ParseSource(sourceHtml);
+            post.Source = string.Intern(sourceText);
+            post.SourceUri = sourceUri;
 
-            post.IsReply = post.ReplyToList.Contains(_uname);
+            post.IsReply = post.RetweetedId == null && post.ReplyToList.Contains(_uname);
             post.IsExcludeReply = false;
 
             if (post.IsMe)
@@ -821,8 +875,7 @@ namespace OpenTween
                 var match = Twitter.StatusUrlRegex.Match(url);
                 if (match.Success)
                 {
-                    long statusId;
-                    if (long.TryParse(match.Groups["StatusId"].Value, out statusId))
+                    if (long.TryParse(match.Groups["StatusId"].Value, out var statusId))
                         yield return statusId;
                 }
             }
@@ -834,34 +887,31 @@ namespace OpenTween
 
             foreach (var status in items)
             {
-                PostClass post = null;
-                post = CreatePostsFromStatusData(status);
-                if (post == null) continue;
-
-                if (minimumId == null || minimumId.Value > post.StatusId)
-                    minimumId = post.StatusId;
+                if (minimumId == null || minimumId.Value > status.Id)
+                    minimumId = status.Id;
 
                 //二重取得回避
                 lock (LockObj)
                 {
                     if (tab == null)
                     {
-                        if (TabInformations.GetInstance().ContainsKey(post.StatusId)) continue;
+                        if (TabInformations.GetInstance().ContainsKey(status.Id)) continue;
                     }
                     else
                     {
-                        if (tab.Contains(post.StatusId)) continue;
+                        if (tab.Contains(status.Id)) continue;
                     }
                 }
 
                 //RT禁止ユーザーによるもの
                 if (gType != MyCommon.WORKERTYPE.UserTimeline &&
-                    post.RetweetedByUserId != null && this.noRTId.Contains(post.RetweetedByUserId.Value)) continue;
+                    status.RetweetedStatus != null && this.noRTId.Contains(status.User.Id)) continue;
+
+                var post = CreatePostsFromStatusData(status);
 
                 post.IsRead = read;
                 if (post.IsMe && !read && _readOwnPost) post.IsRead = true;
 
-                //非同期アイコン取得＆StatusDictionaryに追加
                 if (tab != null && tab.IsInnerStorageTabType)
                     tab.AddPostQueue(post);
                 else
@@ -871,52 +921,43 @@ namespace OpenTween
             return minimumId;
         }
 
-        private long? CreatePostsFromSearchJson(TwitterSearchResult items, TabModel tab, bool read, int count, bool more)
+        private long? CreatePostsFromSearchJson(TwitterSearchResult items, PublicSearchTabModel tab, bool read, bool more)
         {
             long? minimumId = null;
 
-            foreach (var result in items.Statuses)
+            foreach (var status in items.Statuses)
             {
-                var post = CreatePostsFromStatusData(result);
-                if (post == null)
-                    continue;
+                if (minimumId == null || minimumId.Value > status.Id)
+                    minimumId = status.Id;
 
-                if (minimumId == null || minimumId.Value > post.StatusId)
-                    minimumId = post.StatusId;
-
-                if (!more && post.StatusId > tab.SinceId) tab.SinceId = post.StatusId;
+                if (!more && status.Id > tab.SinceId) tab.SinceId = status.Id;
                 //二重取得回避
                 lock (LockObj)
                 {
-                    if (tab == null)
-                    {
-                        if (TabInformations.GetInstance().ContainsKey(post.StatusId)) continue;
-                    }
-                    else
-                    {
-                        if (tab.Contains(post.StatusId)) continue;
-                    }
+                    if (tab.Contains(status.Id)) continue;
                 }
+
+                var post = CreatePostsFromStatusData(status);
 
                 post.IsRead = read;
                 if ((post.IsMe && !read) && this._readOwnPost) post.IsRead = true;
 
-                //非同期アイコン取得＆StatusDictionaryに追加
-                if (tab != null && tab.IsInnerStorageTabType)
-                    tab.AddPostQueue(post);
-                else
-                    TabInformations.GetInstance().AddPost(post);
+                tab.AddPostQueue(post);
             }
 
             return minimumId;
         }
 
-        private void CreateFavoritePostsFromJson(TwitterStatus[] item, bool read)
+        private long? CreateFavoritePostsFromJson(TwitterStatus[] items, bool read)
         {
             var favTab = TabInformations.GetInstance().GetTabByType(MyCommon.TabUsageType.Favorites);
+            long? minimumId = null;
 
-            foreach (var status in item)
+            foreach (var status in items)
             {
+                if (minimumId == null || minimumId.Value > status.Id)
+                    minimumId = status.Id;
+
                 //二重取得回避
                 lock (LockObj)
                 {
@@ -924,12 +965,13 @@ namespace OpenTween
                 }
 
                 var post = CreatePostsFromStatusData(status, true);
-                if (post == null) continue;
 
                 post.IsRead = read;
 
                 TabInformations.GetInstance().AddPost(post);
             }
+
+            return minimumId;
         }
 
         public async Task GetListStatus(bool read, ListTimelineTabModel tab, bool more, bool startup)
@@ -939,12 +981,12 @@ namespace OpenTween
             TwitterStatus[] statuses;
             if (more)
             {
-                statuses = await this.Api.ListsStatuses(tab.ListInfo.Id, count, maxId: tab.OldestId, includeRTs: SettingCommon.Instance.IsListsIncludeRts)
+                statuses = await this.Api.ListsStatuses(tab.ListInfo.Id, count, maxId: tab.OldestId, includeRTs: SettingManager.Common.IsListsIncludeRts)
                     .ConfigureAwait(false);
             }
             else
             {
-                statuses = await this.Api.ListsStatuses(tab.ListInfo.Id, count, includeRTs: SettingCommon.Instance.IsListsIncludeRts)
+                statuses = await this.Api.ListsStatuses(tab.ListInfo.Id, count, includeRTs: SettingManager.Common.IsListsIncludeRts)
                     .ConfigureAwait(false);
             }
 
@@ -1030,8 +1072,7 @@ namespace OpenTween
                 .Concat(Twitter.ThirdPartyStatusUrlRegex.Matches(text).Cast<Match>());
             foreach (var _match in ma)
             {
-                Int64 _statusId;
-                if (Int64.TryParse(_match.Groups["StatusId"].Value, out _statusId))
+                if (Int64.TryParse(_match.Groups["StatusId"].Value, out var _statusId))
                 {
                     if (relPosts.ContainsKey(_statusId))
                         continue;
@@ -1091,7 +1132,7 @@ namespace OpenTween
             if (!TabInformations.GetInstance().ContainsTab(tab))
                 return;
 
-            var minimumId = this.CreatePostsFromSearchJson(searchResult, tab, read, count, more);
+            var minimumId = this.CreatePostsFromSearchJson(searchResult, tab, read, more);
 
             if (minimumId != null)
                 tab.OldestId = minimumId.Value;
@@ -1137,12 +1178,6 @@ namespace OpenTween
                     post.AccessibleText = post.AccessibleText.Replace("<3", "\u2661");
                     post.IsFav = false;
 
-                    // メモリ使用量削減 (同一のテキストであれば同一の string インスタンスを参照させる)
-                    if (post.Text == post.TextFromApi)
-                        post.Text = post.TextFromApi;
-                    if (post.AccessibleText == post.TextFromApi)
-                        post.AccessibleText = post.TextFromApi;
-
                     post.QuoteStatusIds = GetQuoteTweetStatusIds(message.Entities).Distinct().ToArray();
 
                     post.ExpandedUrls = message.Entities.OfType<TwitterEntityUrl>()
@@ -1187,6 +1222,12 @@ namespace OpenTween
                     post.Nickname = user.Name.Trim();
                     post.ImageUrl = user.ProfileImageUrlHttps;
                     post.IsProtect = user.Protected;
+
+                    // メモリ使用量削減 (同一のテキストであれば同一の string インスタンスを参照させる)
+                    if (post.Text == post.TextFromApi)
+                        post.Text = post.TextFromApi;
+                    if (post.AccessibleText == post.TextFromApi)
+                        post.AccessibleText = post.TextFromApi;
 
                     // 他の発言と重複しやすい (共通化できる) 文字列は string.Intern を通す
                     post.ScreenName = string.Intern(post.ScreenName);
@@ -1249,16 +1290,28 @@ namespace OpenTween
             CreateDirectMessagesFromJson(messages, gType, read);
         }
 
-        public async Task GetFavoritesApi(bool read, bool more)
+        public async Task GetFavoritesApi(bool read, FavoritesTabModel tab, bool backward)
         {
             this.CheckAccountState();
 
-            var count = GetApiResultCount(MyCommon.WORKERTYPE.Favorites, more, false);
+            var count = GetApiResultCount(MyCommon.WORKERTYPE.Favorites, backward, false);
 
-            var statuses = await this.Api.FavoritesList(count)
-                .ConfigureAwait(false);
+            TwitterStatus[] statuses;
+            if (backward)
+            {
+                statuses = await this.Api.FavoritesList(count, maxId: tab.OldestId)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                statuses = await this.Api.FavoritesList(count)
+                    .ConfigureAwait(false);
+            }
 
-            CreateFavoritePostsFromJson(statuses, read);
+            var minimumId = this.CreateFavoritePostsFromJson(statuses, read);
+
+            if (minimumId != null)
+                tab.OldestId = minimumId.Value;
         }
 
         private string ReplaceTextFromApi(string text, TwitterEntities entities)
@@ -1297,7 +1350,7 @@ namespace OpenTween
                         var matchStatusUrl = Twitter.StatusUrlRegex.Match(entity.ExpandedUrl);
                         if (matchStatusUrl.Success && matchStatusUrl.Groups["StatusId"].Value == quoteStatus.IdStr)
                         {
-                            var quoteText = this.CreateAccessibleText(quoteStatus.Text, quoteStatus.MergedEntities, quoteStatus: null);
+                            var quoteText = this.CreateAccessibleText(quoteStatus.FullText, quoteStatus.MergedEntities, quoteStatus: null);
                             text = text.Replace(entity.Url, string.Format(Properties.Resources.QuoteStatus_AccessibleText, quoteStatus.User.ScreenName, quoteText));
                         }
                     }
@@ -1398,11 +1451,13 @@ namespace OpenTween
         {
             this.CheckAccountState();
 
-            var ownedLists = await TwitterLists.GetAllItemsAsync(x => this.Api.ListsOwnerships(this.Username, cursor: x))
-                .ConfigureAwait(false);
+            var ownedLists = await TwitterLists.GetAllItemsAsync(x =>
+                this.Api.ListsOwnerships(this.Username, cursor: x, count: 1000))
+                    .ConfigureAwait(false);
 
-            var subscribedLists = await TwitterLists.GetAllItemsAsync(x => this.Api.ListsSubscriptions(this.Username, cursor: x))
-                .ConfigureAwait(false);
+            var subscribedLists = await TwitterLists.GetAllItemsAsync(x =>
+                this.Api.ListsSubscriptions(this.Username, cursor: x, count: 1000))
+                    .ConfigureAwait(false);
 
             TabInformations.GetInstance().SubscribableLists = Enumerable.Concat(ownedLists, subscribedLists)
                 .Select(x => new ListElement(x, this))
@@ -1535,10 +1590,10 @@ namespace OpenTween
         /// <summary>
         /// Twitter APIから得たHTML形式のsource文字列を分析し、source名とURLに分離します
         /// </summary>
-        public static Tuple<string, Uri> ParseSource(string sourceHtml)
+        internal static (string SourceText, Uri SourceUri) ParseSource(string sourceHtml)
         {
             if (string.IsNullOrEmpty(sourceHtml))
-                return Tuple.Create<string, Uri>("", null);
+                return ("", null);
 
             string sourceText;
             Uri sourceUri;
@@ -1565,7 +1620,7 @@ namespace OpenTween
                 sourceUri = null;
             }
 
-            return Tuple.Create(sourceText, sourceUri);
+            return (sourceText, sourceUri);
         }
 
         public async Task<TwitterApiStatus> GetInfoApi()
@@ -1903,8 +1958,8 @@ namespace OpenTween
                 {
                     try
                     {
-                        var status = TwitterStatus.ParseJson(line);
-                        this.CreatePostsFromJson(new[] { status }, MyCommon.WORKERTYPE.UserStream, null, false);
+                        var status = TwitterStatusCompat.ParseJson(line);
+                        this.CreatePostsFromJson(new[] { status.Normalize() }, MyCommon.WORKERTYPE.UserStream, null, false);
                     }
                     catch (SerializationException ex)
                     {
@@ -1916,6 +1971,10 @@ namespace OpenTween
             {
                 MyCommon.TraceOut(ex);
                 return;
+            }
+            catch (XmlException)
+            {
+                MyCommon.TraceOut("XmlException (StatusArrived): " + line);
             }
             catch(NullReferenceException)
             {
@@ -1968,11 +2027,11 @@ namespace OpenTween
             evt.Username = eventData.Source.ScreenName;
             evt.IsMe = evt.Username.ToLowerInvariant().Equals(this.Username.ToLowerInvariant());
 
-            MyCommon.EVENTTYPE eventType;
-            eventTable.TryGetValue(eventData.Event, out eventType);
+            eventTable.TryGetValue(eventData.Event, out var eventType);
             evt.Eventtype = eventType;
 
-            TwitterStreamEvent<TwitterStatus> tweetEvent;
+            TwitterStreamEvent<TwitterStatusCompat> tweetEvent;
+            TwitterStatus tweet;
 
             switch (eventData.Event)
             {
@@ -2000,11 +2059,12 @@ namespace OpenTween
                     return;
                 case "favorite":
                 case "unfavorite":
-                    tweetEvent = TwitterStreamEvent<TwitterStatus>.ParseJson(content);
-                    evt.Target = "@" + tweetEvent.TargetObject.User.ScreenName + ":" + WebUtility.HtmlDecode(tweetEvent.TargetObject.Text);
-                    evt.Id = tweetEvent.TargetObject.Id;
+                    tweetEvent = TwitterStreamEvent<TwitterStatusCompat>.ParseJson(content);
+                    tweet = tweetEvent.TargetObject.Normalize();
+                    evt.Target = "@" + tweet.User.ScreenName + ":" + WebUtility.HtmlDecode(tweet.FullText);
+                    evt.Id = tweet.Id;
 
-                    if (SettingCommon.Instance.IsRemoveSameEvent)
+                    if (SettingManager.Common.IsRemoveSameEvent)
                     {
                         if (this.StoredEvent.Any(ev => ev.Username == evt.Username && ev.Eventtype == evt.Eventtype && ev.Target == evt.Target))
                             return;
@@ -2012,16 +2072,14 @@ namespace OpenTween
 
                     var tabinfo = TabInformations.GetInstance();
 
-                    PostClass post;
-                    var statusId = tweetEvent.TargetObject.Id;
-                    if (!tabinfo.Posts.TryGetValue(statusId, out post))
+                    var statusId = tweet.Id;
+                    if (!tabinfo.Posts.TryGetValue(statusId, out var post))
                         break;
 
                     if (eventData.Event == "favorite")
                     {
                         var favTab = tabinfo.GetTabByType(MyCommon.TabUsageType.Favorites);
-                        if (!favTab.Contains(post.StatusId))
-                            favTab.AddPostImmediately(post.StatusId, post.IsRead);
+                        favTab.AddPostQueue(post);
 
                         if (tweetEvent.Source.Id == this.UserId)
                         {
@@ -2031,7 +2089,7 @@ namespace OpenTween
                         {
                             post.FavoritedCount++;
 
-                            if (SettingCommon.Instance.FavEventUnread)
+                            if (SettingManager.Common.FavEventUnread)
                                 tabinfo.SetReadAllTab(post.StatusId, read: false);
                         }
                     }
@@ -2050,11 +2108,12 @@ namespace OpenTween
                 case "quoted_tweet":
                     if (evt.IsMe) return;
 
-                    tweetEvent = TwitterStreamEvent<TwitterStatus>.ParseJson(content);
-                    evt.Target = "@" + tweetEvent.TargetObject.User.ScreenName + ":" + WebUtility.HtmlDecode(tweetEvent.TargetObject.Text);
-                    evt.Id = tweetEvent.TargetObject.Id;
+                    tweetEvent = TwitterStreamEvent<TwitterStatusCompat>.ParseJson(content);
+                    tweet = tweetEvent.TargetObject.Normalize();
+                    evt.Target = "@" + tweet.User.ScreenName + ":" + WebUtility.HtmlDecode(tweet.FullText);
+                    evt.Id = tweet.Id;
 
-                    if (SettingCommon.Instance.IsRemoveSameEvent)
+                    if (SettingManager.Common.IsRemoveSameEvent)
                     {
                         if (this.StoredEvent.Any(ev => ev.Username == evt.Username && ev.Eventtype == evt.Eventtype && ev.Target == evt.Target))
                             return;
@@ -2142,7 +2201,10 @@ namespace OpenTween
 
         public void ReconnectUserStream()
         {
-            this.StartUserStream();
+            if (this.userStream != null)
+            {
+                this.StartUserStream();
+            }
         }
 
         private class TwitterUserstream : IDisposable

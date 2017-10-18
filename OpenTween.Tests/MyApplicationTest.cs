@@ -21,6 +21,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -28,10 +29,10 @@ using Xunit.Extensions;
 
 namespace OpenTween
 {
-    public class ParseArgumentsTest
+    public class MyApplicationTest
     {
         [Fact]
-        public void NoOptionsTest()
+        public void ParseArguments_NoOptionsTest()
         {
             var args = new string[] { };
 
@@ -39,7 +40,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void SingleOptionTest()
+        public void ParseArguments_SingleOptionTest()
         {
             var args = new[] { "/foo" };
 
@@ -51,7 +52,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void MultipleOptionsTest()
+        public void ParseArguments_MultipleOptionsTest()
         {
             var args = new[] { "/foo", "/bar" };
 
@@ -64,7 +65,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void OptionWithArgumentTest()
+        public void ParseArguments_OptionWithArgumentTest()
         {
             var args = new[] { "/foo:hogehoge" };
 
@@ -76,7 +77,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void OptionWithEmptyArgumentTest()
+        public void ParseArguments_OptionWithEmptyArgumentTest()
         {
             var args = new[] { "/foo:" };
 
@@ -88,7 +89,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void IgroreInvalidOptionsTest()
+        public void ParseArguments_IgroreInvalidOptionsTest()
         {
             var args = new string[] { "--foo", "/" };
 
@@ -96,7 +97,7 @@ namespace OpenTween
         }
 
         [Fact]
-        public void DuplicateOptionsTest()
+        public void ParseArguments_DuplicateOptionsTest()
         {
             var args = new[] { "/foo:abc", "/foo:123" };
 
@@ -105,6 +106,17 @@ namespace OpenTween
                 ["foo"] = "123",
             },
             MyApplication.ParseArguments(args));
+        }
+
+        [Theory]
+        [InlineData("ja-JP", "ja-JP")]
+        [InlineData("fr-FR", "en")] // 対応するカルチャが無い場合は en にフォールバックする
+        [InlineData("zh-CN", "en")] // zh-CHS リソースは v1.3.7 から削除
+        [InlineData("zh-TW", "en")]
+        public void GetPreferredCulture_Test(string currentCulture, string expectedCulture)
+        {
+            var actual = MyApplication.GetPreferredCulture(new CultureInfo(currentCulture));
+            Assert.Equal(expectedCulture, actual.Name);
         }
     }
 }

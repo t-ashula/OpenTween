@@ -57,6 +57,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (count != null)
@@ -76,6 +77,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (count != null)
@@ -97,6 +99,7 @@ namespace OpenTween.Api
                 ["include_rts"] = "true",
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (count != null)
@@ -117,6 +120,7 @@ namespace OpenTween.Api
                 ["id"] = statusId.ToString(),
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.GetAsync<TwitterStatus>(endpoint, param, "/statuses/show/:id");
@@ -130,6 +134,7 @@ namespace OpenTween.Api
                 ["status"] = status,
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (replyToId != null)
@@ -159,6 +164,7 @@ namespace OpenTween.Api
                 ["id"] = statusId.ToString(),
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterStatus>(endpoint, param);
@@ -173,6 +179,7 @@ namespace OpenTween.Api
                 ["result_type"] = "recent",
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (lang != null)
@@ -187,7 +194,7 @@ namespace OpenTween.Api
             return this.apiConnection.GetAsync<TwitterSearchResult>(endpoint, param, "/search/tweets");
         }
 
-        public Task<TwitterLists> ListsOwnerships(string screenName, long? cursor = null)
+        public Task<TwitterLists> ListsOwnerships(string screenName, long? cursor = null, int? count = null)
         {
             var endpoint = new Uri("lists/ownerships.json", UriKind.Relative);
             var param = new Dictionary<string, string>
@@ -197,11 +204,13 @@ namespace OpenTween.Api
 
             if (cursor != null)
                 param["cursor"] = cursor.ToString();
+            if (count != null)
+                param["count"] = count.ToString();
 
             return this.apiConnection.GetAsync<TwitterLists>(endpoint, param, "/lists/ownerships");
         }
 
-        public Task<TwitterLists> ListsSubscriptions(string screenName, long? cursor = null)
+        public Task<TwitterLists> ListsSubscriptions(string screenName, long? cursor = null, int? count = null)
         {
             var endpoint = new Uri("lists/subscriptions.json", UriKind.Relative);
             var param = new Dictionary<string, string>
@@ -211,8 +220,28 @@ namespace OpenTween.Api
 
             if (cursor != null)
                 param["cursor"] = cursor.ToString();
+            if (count != null)
+                param["count"] = count.ToString();
 
             return this.apiConnection.GetAsync<TwitterLists>(endpoint, param, "/lists/subscriptions");
+        }
+
+        public Task<TwitterLists> ListsMemberships(string screenName, long? cursor = null, int? count = null, bool? filterToOwnedLists = null)
+        {
+            var endpoint = new Uri("lists/memberships.json", UriKind.Relative);
+            var param = new Dictionary<string, string>
+            {
+                ["screen_name"] = screenName,
+            };
+
+            if (cursor != null)
+                param["cursor"] = cursor.ToString();
+            if (count != null)
+                param["count"] = count.ToString();
+            if (filterToOwnedLists != null)
+                param["filter_to_owned_lists"] = filterToOwnedLists.Value ? "true" : "false";
+
+            return this.apiConnection.GetAsync<TwitterLists>(endpoint, param, "/lists/memberships");
         }
 
         public Task<LazyJson<TwitterList>> ListsCreate(string name, string description = null, bool? @private = null)
@@ -268,6 +297,7 @@ namespace OpenTween.Api
                 ["list_id"] = listId.ToString(),
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (count != null)
@@ -290,6 +320,7 @@ namespace OpenTween.Api
                 ["list_id"] = listId.ToString(),
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (cursor != null)
@@ -307,6 +338,7 @@ namespace OpenTween.Api
                 ["screen_name"] = screenName,
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.GetAsync<TwitterUser>(endpoint, param, "/lists/members/show");
@@ -321,6 +353,7 @@ namespace OpenTween.Api
                 ["screen_name"] = screenName,
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterUser>(endpoint, param);
@@ -335,6 +368,7 @@ namespace OpenTween.Api
                 ["screen_name"] = screenName,
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterUser>(endpoint, param);
@@ -411,6 +445,7 @@ namespace OpenTween.Api
                 ["screen_name"] = screenName,
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.GetAsync<TwitterUser>(endpoint, param, "/users/show/:id");
@@ -422,6 +457,7 @@ namespace OpenTween.Api
             var param = new Dictionary<string, string>
             {
                 ["screen_name"] = screenName,
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterUser>(endpoint, param);
@@ -434,6 +470,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (count != null)
@@ -452,6 +489,7 @@ namespace OpenTween.Api
             var param = new Dictionary<string, string>
             {
                 ["id"] = statusId.ToString(),
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterStatus>(endpoint, param);
@@ -463,6 +501,7 @@ namespace OpenTween.Api
             var param = new Dictionary<string, string>
             {
                 ["id"] = statusId.ToString(),
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterStatus>(endpoint, param);
@@ -548,6 +587,7 @@ namespace OpenTween.Api
             var param = new Dictionary<string, string>
             {
                 ["screen_name"] = screenName,
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterUser>(endpoint, param);
@@ -559,6 +599,7 @@ namespace OpenTween.Api
             var param = new Dictionary<string, string>
             {
                 ["screen_name"] = screenName,
+                ["tweet_mode"] = "extended",
             };
 
             return this.apiConnection.PostLazyAsync<TwitterUser>(endpoint, param);
@@ -571,6 +612,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             var user = await this.apiConnection.GetAsync<TwitterUser>(endpoint, param, "/account/verify_credentials")
@@ -589,6 +631,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
 
             if (name != null)
@@ -616,6 +659,7 @@ namespace OpenTween.Api
             {
                 ["include_entities"] = "true",
                 ["include_ext_alt_text"] = "true",
+                ["tweet_mode"] = "extended",
             };
             var paramMedia = new Dictionary<string, IMediaItem>
             {
@@ -665,12 +709,12 @@ namespace OpenTween.Api
             var endpoint = new Uri("https://userstream.twitter.com/1.1/user.json");
             var param = new Dictionary<string, string>();
 
-            if (replies != null)
+            if (!string.IsNullOrEmpty(replies))
                 param["replies"] = replies;
-            if (track != null)
+            if (!string.IsNullOrEmpty(track))
                 param["track"] = track;
 
-            return this.apiConnection.GetStreamAsync(endpoint, param);
+            return this.apiConnection.GetStreamingStreamAsync(endpoint, param);
         }
 
         public OAuthEchoHandler CreateOAuthEchoHandler(Uri authServiceProvider, Uri realm = null)

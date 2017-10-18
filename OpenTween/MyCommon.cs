@@ -48,6 +48,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using OpenTween.Api;
 using OpenTween.Models;
+using OpenTween.Setting;
 
 namespace OpenTween
 {
@@ -55,7 +56,6 @@ namespace OpenTween
     {
         private static readonly object LockObj = new object();
         public static bool _endingFlag;        //終了フラグ
-        public static string cultureStr = null;
         public static string settingPath;
 
         public enum IconSizes
@@ -126,7 +126,7 @@ namespace OpenTween
         public enum HttpTimeOut
         {
             MinValue = 10,
-            MaxValue = 120,
+            MaxValue = 1000,
             DefaultValue = 20,
         }
 
@@ -417,7 +417,7 @@ namespace OpenTween
                     writer.Write(errorReport);
                 }
 
-                var settings = SettingCommon.Instance;
+                var settings = SettingManager.Common;
                 var mainForm = Application.OpenForms.OfType<TweenMain>().FirstOrDefault();
 
                 ErrorReport report;
@@ -814,7 +814,6 @@ namespace OpenTween
 
         public static DateTime DateTimeParse(string input)
         {
-            DateTime rslt;
             string[] format = {
                 "ddd MMM dd HH:mm:ss zzzz yyyy",
                 "ddd, d MMM yyyy HH:mm:ss zzzz",
@@ -825,7 +824,7 @@ namespace OpenTween
                                           fmt,
                                           DateTimeFormatInfo.InvariantInfo,
                                           DateTimeStyles.None,
-                                          out rslt))
+                                          out var rslt))
                 {
                     return rslt;
                 }
@@ -1070,6 +1069,40 @@ namespace OpenTween
         {
             for (var i = from; i >= to; i--)
                 yield return i;
+        }
+
+        public static IEnumerable<int> CircularCountUp(int length, int startIndex)
+        {
+            if (length < 1)
+                throw new ArgumentOutOfRangeException(nameof(length));
+            if (startIndex < 0 || startIndex >= length)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // startindex ... 末尾
+            var indices = MyCommon.CountUp(startIndex, length - 1);
+
+            // 先頭 ... (startIndex - 1)
+            if (startIndex != 0)
+                indices = indices.Concat(MyCommon.CountUp(0, startIndex - 1));
+
+            return indices;
+        }
+
+        public static IEnumerable<int> CircularCountDown(int length, int startIndex)
+        {
+            if (length < 1)
+                throw new ArgumentOutOfRangeException(nameof(length));
+            if (startIndex < 0 || startIndex >= length)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // startIndex ... 先頭
+            var indices = MyCommon.CountDown(startIndex, 0);
+
+            // 末尾 ... (startIndex + 1)
+            if (startIndex != length - 1)
+                indices = indices.Concat(MyCommon.CountDown(length - 1, startIndex + 1));
+
+            return indices;
         }
 
         /// <summary>

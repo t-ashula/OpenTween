@@ -65,9 +65,9 @@ namespace OpenTween
             // その他
             group = this.ListViewApi.Groups[1];
             var apiStatuses = MyCommon.TwitterApiInfo.AccessLimit.Where(x => !_tlEndpoints.Contains(x.Key)).OrderBy(x => x.Key);
-            foreach (var pair in apiStatuses)
+            foreach (var (endpoint, apiLimit) in apiStatuses)
             {
-                AddListViewItem(pair.Key, pair.Value, group);
+                AddListViewItem(endpoint, apiLimit, group);
             }
 
             MyCommon.TwitterApiInfo.AccessLimitUpdated += this.TwitterApiStatus_AccessLimitUpdated;
@@ -96,13 +96,13 @@ namespace OpenTween
             }
         }
 
-        private void TwitterApiStatus_AccessLimitUpdated(object sender, EventArgs e)
+        private async void TwitterApiStatus_AccessLimitUpdated(object sender, EventArgs e)
         {
             try
             {
                 if (this.InvokeRequired && !this.IsDisposed)
                 {
-                    this.Invoke((MethodInvoker)(() => this.TwitterApiStatus_AccessLimitUpdated(sender, e)));
+                    await this.InvokeAsync(() => this.TwitterApiStatus_AccessLimitUpdated(sender, e));
                 }
                 else
                 {

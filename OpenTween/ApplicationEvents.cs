@@ -37,11 +37,19 @@ using System.Threading.Tasks;
 using System.Globalization;
 using System.Reflection;
 using Microsoft.Win32;
+using OpenTween.Setting;
+using System.Security.Principal;
 
 namespace OpenTween
 {
     internal class MyApplication
     {
+        public static readonly CultureInfo[] SupportedUICulture = new[]
+        {
+            new CultureInfo("en"), // 先頭のカルチャはフォールバック先として使用される
+            new CultureInfo("ja"),
+        };
+
         /// <summary>
         /// 起動時に指定されたオプションを取得します
         /// </summary>
@@ -53,6 +61,8 @@ namespace OpenTween
         [STAThread]
         static int Main(string[] args)
         {
+            WarnIfRunAsAdministrator();
+
             if (!CheckRuntimeVersion())
             {
                 var message = string.Format(Properties.Resources.CheckRuntimeVersion_Error, ".NET Framework 4.5.1");
@@ -64,6 +74,8 @@ namespace OpenTween
 
             if (!SetConfigDirectoryPath())
                 return 1;
+
+            SettingManager.LoadAll();
 
             InitCulture();
 
@@ -95,6 +107,31 @@ namespace OpenTween
                 mt.ReleaseMutex();
 
                 return 0;
+            }
+        }
+
+        /// <summary>
+        /// OpenTween が管理者権限で実行されている場合に警告を表示します
+        /// </summary>
+        private static void WarnIfRunAsAdministrator()
+        {
+            // UAC が無効なシステムでは警告を表示しない
+            using (var lmKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32))
+            using (var systemKey = lmKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\"))
+            {
+                var enableLUA = (int?)systemKey?.GetValue("EnableLUA");
+                if (enableLUA != 1)
+                    return;
+            }
+
+            using (var currentIdentity = WindowsIdentity.GetCurrent())
+            {
+                var principal = new WindowsPrincipal(currentIdentity);
+                if (principal.IsInRole(WindowsBuiltInRole.Administrator))
+                {
+                    var message = string.Format(Properties.Resources.WarnIfRunAsAdministrator_Message, Application.ProductName);
+                    MessageBox.Show(message, Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
         }
 
@@ -139,19 +176,15 @@ namespace OpenTween
         {
             // 実行中の同じアプリケーションのウィンドウ・ハンドルの取得
             var prevProcess = GetPreviousProcess();
-            if (prevProcess == null || prevProcess.MainWindowHandle == IntPtr.Zero)
+            if (prevProcess == null)
             {
                 return;
             }
 
-            var form = Control.FromHandle(prevProcess.MainWindowHandle) as Form;
-            if (form != null)
+            IntPtr windowHandle = NativeMethods.GetWindowHandle((uint)prevProcess.Id, Application.ProductName);
+            if (windowHandle != IntPtr.Zero)
             {
-                if (form.WindowState == FormWindowState.Minimized)
-                {
-                    NativeMethods.RestoreWindow(form);
-                }
-                form.Activate();
+                NativeMethods.SetActiveWindow(windowHandle);
             }
         }
 
@@ -172,59 +205,87 @@ namespace OpenTween
 
         private static void OnUnhandledException(Exception ex)
         {
+            if (CheckIgnorableError(ex))
+                return;
+
             if (MyCommon.ExceptionOut(ex))
             {
                 Application.Exit();
             }
         }
 
-        private static bool IsEqualCurrentCulture(string CultureName)
+        /// <summary>
+        /// 無視しても問題のない既知の例外であれば true を返す
+        /// </summary>
+        private static bool CheckIgnorableError(Exception ex)
         {
-            return Thread.CurrentThread.CurrentUICulture.Name.StartsWith(CultureName, StringComparison.Ordinal);
-        }
-
-        public static string CultureCode
-        {
-            get
+#if DEBUG
+            return false;
+#else
+            if (ex is AggregateException aggregated)
             {
-                if (MyCommon.cultureStr == null)
-                {
-                    var cfgCommon = SettingCommon.Load();
-                    MyCommon.cultureStr = cfgCommon.Language;
-                    if (MyCommon.cultureStr == "OS")
-                    {
-                        if (!IsEqualCurrentCulture("ja") &&
-                           !IsEqualCurrentCulture("en") &&
-                           !IsEqualCurrentCulture("zh-CN"))
-                        {
-                            MyCommon.cultureStr = "en";
-                        }
-                    }
-                }
-                return MyCommon.cultureStr;
+                if (aggregated.InnerExceptions.Count != 1)
+                    return false;
+
+                ex = aggregated.InnerExceptions.Single();
             }
+
+            switch (ex)
+            {
+                case System.Net.WebException webEx:
+                    // SSL/TLS のネゴシエーションに失敗した場合に発生する。なぜかキャッチできない例外
+                    // https://osdn.net/ticket/browse.php?group_id=6526&tid=37432
+                    if (webEx.Status == System.Net.WebExceptionStatus.SecureChannelFailure)
+                        return true;
+                    break;
+                case System.Threading.Tasks.TaskCanceledException cancelEx:
+                    // ton.twitter.com の画像でタイムアウトした場合、try-catch で例外がキャッチできない
+                    // https://osdn.net/ticket/browse.php?group_id=6526&tid=37433
+                    var stackTrace = new System.Diagnostics.StackTrace(cancelEx);
+                    var lastFrameMethod = stackTrace.GetFrame(stackTrace.FrameCount - 1).GetMethod();
+                    if (lastFrameMethod.ReflectedType == typeof(Connection.TwitterApiConnection) &&
+                        lastFrameMethod.Name == nameof(Connection.TwitterApiConnection.GetStreamAsync))
+                        return true;
+                    break;
+            }
+
+            return false;
+#endif
         }
 
         public static void InitCulture()
         {
-            try
-            {
-                var culture = CultureInfo.CurrentCulture;
-                if (CultureCode != "OS")
-                    culture = new CultureInfo(CultureCode);
+            var currentCulture = CultureInfo.CurrentUICulture;
 
-                CultureInfo.DefaultThreadCurrentUICulture = culture;
-                Thread.CurrentThread.CurrentUICulture = culture;
-            }
-            catch (Exception)
+            var settingCultureStr = SettingManager.Common.Language;
+            if (settingCultureStr != "OS")
             {
+                try
+                {
+                    currentCulture = new CultureInfo(settingCultureStr);
+                }
+                catch (CultureNotFoundException) { }
             }
+
+            var preferredCulture = GetPreferredCulture(currentCulture);
+            CultureInfo.DefaultThreadCurrentUICulture = preferredCulture;
+            Thread.CurrentThread.CurrentUICulture = preferredCulture;
+        }
+
+        /// <summary>
+        /// サポートしているカルチャの中から、指定されたカルチャに対して適切なカルチャを選択して返します
+        /// </summary>
+        public static CultureInfo GetPreferredCulture(CultureInfo culture)
+        {
+            if (SupportedUICulture.Any(x => x.Contains(culture)))
+                return culture;
+
+            return SupportedUICulture[0];
         }
 
         private static bool SetConfigDirectoryPath()
         {
-            string configDir;
-            if (StartupOptions.TryGetValue("configDir", out configDir) && !string.IsNullOrEmpty(configDir))
+            if (StartupOptions.TryGetValue("configDir", out var configDir) && !string.IsNullOrEmpty(configDir))
             {
                 // 起動オプション /configDir で設定ファイルの参照先を変更できます
                 if (!Directory.Exists(configDir))
@@ -238,13 +299,72 @@ namespace OpenTween
             }
             else
             {
-                if (File.Exists(Path.Combine(Application.StartupPath, "roaming")))
+                // OpenTween.exe と同じディレクトリに設定ファイルを配置する
+                MyCommon.settingPath = Application.StartupPath;
+
+                SettingManager.LoadAll();
+
+                try
                 {
-                    MyCommon.settingPath = MySpecialPath.UserAppDataPath();
+                    // 設定ファイルが書き込み可能な状態であるかテストする
+                    SettingManager.SaveAll();
                 }
-                else
+                catch (UnauthorizedAccessException)
                 {
-                    MyCommon.settingPath = Application.StartupPath;
+                    // 書き込みに失敗した場合 (Program Files 以下に配置されている場合など)
+
+                    // 通常は C:\Users\ユーザー名\AppData\Roaming\OpenTween\ となる
+                    var roamingDir = Path.Combine(new[]
+                    {
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        Application.ProductName,
+                    });
+                    Directory.CreateDirectory(roamingDir);
+
+                    MyCommon.settingPath = roamingDir;
+
+                    /*
+                     * 書き込みが制限されたディレクトリ内で起動された場合の設定ファイルの扱い
+                     *
+                     *  (A) StartupPath に存在する設定ファイル
+                     *  (B) Roaming に存在する設定ファイル
+                     *
+                     *  1. A も B も存在しない場合
+                     *    => B を新規に作成する
+                     *
+                     *  2. A が存在し、B が存在しない場合
+                     *    => A の内容を B にコピーする (警告を表示)
+                     *
+                     *  3. A が存在せず、B が存在する場合
+                     *    => B を使用する
+                     *
+                     *  4. A も B も存在するが、A の方が更新日時が新しい場合
+                     *    => A の内容を B にコピーする (警告を表示)
+                     *
+                     *  5. A も B も存在するが、B の方が更新日時が新しい場合
+                     *    => B を使用する
+                     */
+                    var startupDirFile = new FileInfo(Path.Combine(Application.StartupPath, "SettingCommon.xml"));
+                    var roamingDirFile = new FileInfo(Path.Combine(roamingDir, "SettingCommon.xml"));
+
+                    if (roamingDirFile.Exists && (!startupDirFile.Exists || startupDirFile.LastWriteTime <= roamingDirFile.LastWriteTime))
+                    {
+                        // 既に Roaming に設定ファイルが存在し、Roaming 内のファイルの方が新しい場合は
+                        // StartupPath に設定ファイルが存在しても無視する
+                        SettingManager.LoadAll();
+                    }
+                    else
+                    {
+                        if (startupDirFile.Exists)
+                        {
+                            // StartupPath に設定ファイルが存在し、Roaming 内のファイルよりも新しい場合のみ警告を表示する
+                            var message = string.Format(Properties.Resources.SettingPath_Relocation, Application.StartupPath, MyCommon.settingPath);
+                            MessageBox.Show(message, Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+
+                        // Roaming に設定ファイルを作成 (StartupPath に読み込みに成功した設定ファイルがあれば内容がコピーされる)
+                        SettingManager.SaveAll();
+                    }
                 }
             }
 
